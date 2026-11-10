@@ -3,6 +3,7 @@ package com.phoneguard.app
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.Context
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -100,7 +101,7 @@ class MainActivity : Activity() {
                     val flags = info.requestedPermissionsFlags ?: intArrayOf()
                     val granted = requested.mapIndexedNotNull { index, permission ->
                         if (permission in dangerous && index < flags.size &&
-                            (flags[index] and PackageManager.REQUESTED_PERMISSION_GRANTED) != 0
+                            (flags[index] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
                         ) permission.substringAfterLast('.') else null
                     }.distinct()
                     if (granted.isEmpty()) null else Triple(
