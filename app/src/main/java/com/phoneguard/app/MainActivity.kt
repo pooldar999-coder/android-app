@@ -100,9 +100,9 @@ class MainActivity : Activity() {
                     val requested = info.requestedPermissions ?: return@mapNotNull null
                     val flags = info.requestedPermissionsFlags ?: intArrayOf()
                     val granted = requested.mapIndexedNotNull { index, permission ->
-                        if (permission in dangerous && index < flags.size &&
-                            (flags[index] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
-                        ) permission.substringAfterLast('.') else null
+                        // Android PackageInfo.REQUESTED_PERMISSION_GRANTED is the bit value 0x2.
+                        if (permission in dangerous && index < flags.size && (flags[index] and 0x2) != 0)
+                            permission.substringAfterLast('.') else null
                     }.distinct()
                     if (granted.isEmpty()) null else Triple(
                         info.applicationInfo?.loadLabel(packageManager)?.toString() ?: info.packageName,
