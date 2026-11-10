@@ -16,3 +16,5 @@ This is an informational checker, not an antivirus or forensic scanner. A permis
 
 ## Build
 GitHub Actions builds a debug APK on pushes to the main branch and publishes it as a workflow artifact.
+
+The permission-grant flag check uses the Android SDK bit value 0x2 for compatibility.
