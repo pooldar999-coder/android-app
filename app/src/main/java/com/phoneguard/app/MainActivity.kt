@@ -103,7 +103,7 @@ class MainActivity : Activity() {
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
         val privacyApps = privacyPermissionApps()
         val reviewApps = auditInstalledApps()
-        val warnings = highRisk.size + reviewApps.size + if (adb) 1 else 0
+        val warnings = highRisk.size + (if (adb) 1 else 0)
 
         addText("گزارش اسکن", 13f, blue, true)
         addText("نتیجه بررسی امنیتی", 26f, ink, true)
