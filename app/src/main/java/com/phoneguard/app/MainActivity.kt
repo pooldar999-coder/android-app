@@ -103,14 +103,16 @@ class MainActivity : Activity() {
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
         val privacyApps = privacyPermissionApps()
         val reviewApps = auditInstalledApps()
-        val warnings = highRisk.size + (if (adb) 1 else 0)
+        // Count all findings that require user review in the summary, including app-audit flags.
+        // These are review indicators, not proof that an app is malicious.
+        val warnings = highRisk.size + (if (adb) 1 else 0) + reviewApps.size
 
         addText("گزارش اسکن", 13f, blue, true)
         addText("نتیجه بررسی امنیتی", 26f, ink, true)
         val summary = card()
         summary.setBackground(round(if (warnings > 0) Color.rgb(255, 241, 238) else Color.rgb(232, 247, 239), 18))
         summary.addView(text(if (warnings > 0) "نیاز به بررسی" else "مورد پرخطر مشخصی پیدا نشد", 20f, if (warnings > 0) red else green, true))
-        summary.addView(text(if (warnings > 0) "$warnings دسترسی یا تنظیم نیازمند توجه پیدا شد." else "در بررسی‌های انجام‌شده هشدار مهمی دیده نشد.", 14f, ink))
+        summary.addView(text(if (warnings > 0) "$warnings مورد نیازمند بازبینی پیدا شد؛ این موارد به‌تنهایی اثبات بدافزار نیستند." else "در بررسی‌های انجام‌شده هشدار مهمی دیده نشد.", 14f, ink))
         root.addView(summary)
 
         addText("موارد مهم", 19f, ink, true, 18)
