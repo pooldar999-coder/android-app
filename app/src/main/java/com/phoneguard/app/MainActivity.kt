@@ -4,12 +4,14 @@ import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -18,150 +20,222 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 class MainActivity : Activity() {
-    private lateinit var content: LinearLayout
-    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var root: LinearLayout
     private var scanButton: Button? = null
+    private val blue = Color.rgb(35, 105, 220)
+    private val ink = Color.rgb(29, 39, 56)
+    private val muted = Color.rgb(105, 116, 132)
+    private val red = Color.rgb(194, 50, 50)
+    private val amber = Color.rgb(190, 119, 20)
+    private val green = Color.rgb(27, 133, 83)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val scroll = ScrollView(this)
-        content = LinearLayout(this).apply {
+        window.statusBarColor = Color.rgb(245, 248, 253)
+        window.navigationBarColor = Color.WHITE
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        val scroll = ScrollView(this).apply { setBackgroundColor(Color.rgb(245, 248, 253)) }
+        root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(36, 40, 36, 40)
+            setPadding(dp(18), dp(22), dp(18), dp(28))
         }
-        scroll.addView(content)
+        scroll.addView(root)
         setContentView(scroll)
-        showWelcome()
+        showHome()
     }
 
-    private fun showWelcome() {
-        content.removeAllViews()
-        addText("PhoneGuard", 28f, true)
-        addText("بررسی امنیت گوشی", 20f, true)
-        addText("با زدن دکمه زیر، بررسی وضعیت‌های امنیتی قابل مشاهده در اندروید شروع می‌شود. بررسی روی خود گوشی انجام می‌شود و هیچ اطلاعاتی ارسال نمی‌شود.", 15f)
+    private fun showHome() {
+        root.removeAllViews()
+        addText("PHONEGUARD", 13f, blue, true)
+        addText("مرکز امنیت گوشی", 27f, ink, true)
+        addText("بررسی دسترسی‌های مهم و تنظیمات امنیتی دستگاه", 14f, muted)
+        val hero = card()
+        hero.setBackground(round(Color.rgb(24, 65, 133), 22))
+        hero.addView(text("بررسی امنیتی گوشی شما", 19f, Color.WHITE, true))
+        hero.addView(text("اسکن محلی انجام می‌شود؛ هیچ اطلاعاتی از گوشی ارسال نمی‌شود.", 13f, Color.rgb(225, 235, 250)))
         scanButton = Button(this).apply {
             text = "شروع اسکن امنیتی"
-            setOnClickListener { startScan() }
+            isAllCaps = false
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            background = round(blue, 14)
+            setPadding(dp(18), dp(7), dp(18), dp(7))
+            setOnClickListener { runScan() }
         }
-        content.addView(scanButton)
-        addText("این ابزار اسکنر ضدویروس حرفه‌ای نیست و نمی‌تواند همه بدافزارها یا هک‌ها را تشخیص دهد.", 13f)
+        hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
+        root.addView(hero)
+        addText("چه چیزهایی بررسی می‌شوند؟", 18f, ink, true, 18)
+        addInfoCard("دسترسی‌های ویژه", "دسترس‌پذیری، خواندن اعلان‌ها و مدیر دستگاه")
+        addInfoCard("اتصالات و تنظیمات", "VPN و اشکال‌زدایی USB")
+        addInfoCard("حریم خصوصی", "برنامه‌های دارای مجوز دوربین، میکروفون و موقعیت مکانی")
+        addText("توجه: این ابزار آنتی‌ویروس حرفه‌ای نیست و نتیجه آن تشخیص قطعی بدافزار نیست.", 12f, muted, false, 16)
     }
 
-    private fun startScan() {
-        scanButton?.isEnabled = false
-        scanButton?.text = "در حال بررسی..."
-        content.addView(ProgressBar(this).apply { isIndeterminate = true })
-        val progressText = TextView(this).apply {
-            text = "در حال بررسی تنظیمات امنیتی و مجوزهای برنامه‌ها..."
-            textSize = 15f
-            setTextColor(0xFF202124.toInt())
-            setPadding(0, 16, 0, 16)
-        }
-        content.addView(progressText)
-        // Allow the progress indicator to render before performing the local checks.
-        handler.postDelayed({
-            renderResults()
-        }, 900)
+    private fun runScan() {
+        root.removeAllViews()
+        addText("در حال اسکن...", 25f, ink, true)
+        addText("در حال بررسی تنظیمات و دسترسی‌های قابل مشاهده در اندروید", 14f, muted)
+        val bar = ProgressBar(this).apply { isIndeterminate = true }
+        root.addView(bar, LinearLayout.LayoutParams(-1, dp(5)).apply { topMargin = dp(24); bottomMargin = dp(24) })
+        root.postDelayed({ showResults() }, 850)
     }
 
-    private fun renderResults() {
-        content.removeAllViews()
-        addText("نتیجه اسکن امنیتی", 25f, true)
-        addText("بررسی روی همین گوشی انجام شد؛ اطلاعاتی ارسال نشده است.", 14f)
-
-        val adb = runCatching { Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 }.getOrDefault(false)
-        statusRow("اشکال‌زدایی USB (ADB)", if (adb) "روشن است؛ اگر خودتان فعال نکرده‌اید خاموشش کنید." else "خاموش است.")
-
-        val vpn = runCatching {
+    private data class Finding(val title: String, val detail: String)
+    private fun showResults() {
+        root.removeAllViews()
+        val adb = safe { Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 } ?: false
+        val vpn = safe {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
-        }.getOrDefault(false)
-        statusRow("اتصال VPN", if (vpn) "در حال حاضر VPN فعال است؛ نام برنامه را در تنظیمات VPN بررسی کنید." else "VPN فعالی شناسایی نشد.")
-
-        val accessibility = secureSettingList(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        statusRow("سرویس‌های دسترس‌پذیری فعال", if (accessibility.isEmpty()) "موردی ثبت نشده است." else accessibility.joinToString("\n"))
-
-        val listeners = secureSettingList("enabled_notification_listeners")
-        statusRow("دسترسی خواندن اعلان‌ها", if (listeners.isEmpty()) "موردی ثبت نشده است." else listeners.joinToString("\n"))
-
-        val admins = runCatching {
+        } ?: false
+        val accessibility = settingPackages(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val listeners = settingPackages("enabled_notification_listeners")
+        val admins = safe {
             val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             dpm.activeAdmins?.map { it.packageName } ?: emptyList()
-        }.getOrDefault(emptyList())
-        statusRow("برنامه‌های مدیر دستگاه", if (admins.isEmpty()) "موردی ثبت نشده است." else admins.joinToString("\n"))
+        } ?: emptyList()
+        val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
+        val warnings = highRisk.size + if (adb) 1 else 0
+        val privacyApps = privacyPermissionApps()
 
-        addText("برنامه‌های دارای مجوز حساس", 20f, true)
-        addText("داشتن این مجوزها به‌تنهایی به معنی بدافزار بودن برنامه نیست؛ نام برنامه‌ها را بررسی کنید.", 14f)
-        val apps = findAppsWithGrantedDangerousPermissions()
-        if (apps.isEmpty()) {
-            addText("برنامه‌ای با مجوز حساسِ اعطا‌شده پیدا نشد یا اندروید اجازه نمایش فهرست را نداد.", 14f)
-        } else {
-            apps.forEach { (name, pkg, permissions) ->
-                addText("$name\nبسته: $pkg\nمجوزها: ${permissions.joinToString(", ")}", 14f)
-                addDivider()
+        addText("گزارش اسکن", 13f, blue, true)
+        addText("نتیجه بررسی امنیتی", 26f, ink, true)
+        val summary = card()
+        summary.setBackground(round(if (warnings > 0) Color.rgb(255, 241, 238) else Color.rgb(232, 247, 239), 18))
+        summary.addView(text(if (warnings > 0) "نیاز به بررسی" else "مورد پرخطر مشخصی پیدا نشد", 20f, if (warnings > 0) red else green, true))
+        summary.addView(text(if (warnings > 0) "$warnings دسترسی یا تنظیم نیازمند توجه پیدا شد." else "در بررسی‌های انجام‌شده هشدار مهمی دیده نشد.", 14f, ink))
+        root.addView(summary)
+
+        addText("موارد مهم", 19f, ink, true, 18)
+        val findings = mutableListOf<Finding>()
+        if (adb) findings.add(Finding("اشکال‌زدایی USB روشن است", "اگر خودتان فعالش نکرده‌اید، از تنظیمات توسعه‌دهنده خاموش کنید."))
+        highRisk.forEach { pkg ->
+            val kind = when {
+                pkg in accessibility -> "دسترسی دسترس‌پذیری"
+                pkg in listeners -> "دسترسی خواندن اعلان‌ها"
+                else -> "مدیر دستگاه"
             }
+            findings.add(Finding("${appLabel(pkg)} — $kind", "این دسترسی حساس فعال است. اگر برنامه را نمی‌شناسید، بررسی‌اش کنید."))
         }
-        addText("محدودیت مهم", 18f, true)
-        addText("این بررسی فقط تنظیمات و مجوزهای قابل مشاهده را گزارش می‌کند. تشخیص قطعی بدافزار، جاسوس‌افزار یا سرقت حساب‌ها از توان این نسخه خارج است.", 14f)
-        content.addView(Button(this).apply {
+        if (findings.isEmpty()) addResultCard("✓", "دسترسی ویژه مشکوکی پیدا نشد", "دسترس‌پذیری، اعلان‌ها و مدیر دستگاه بررسی شدند.", green)
+        else findings.forEach { addResultCard("!", it.title, it.detail, red) }
+
+        addText("وضعیت اتصال", 19f, ink, true, 18)
+        addResultCard(if (vpn) "i" else "✓", "VPN", if (vpn) "یک اتصال VPN فعال است؛ اگر خودتان روشن کرده‌اید طبیعی است." else "اتصال VPN فعالی شناسایی نشد.", if (vpn) amber else green)
+        addResultCard(if (adb) "!" else "✓", "اشکال‌زدایی USB", if (adb) "روشن است؛ در صورت عدم نیاز خاموشش کنید." else "خاموش است.", if (adb) red else green)
+
+        addText("حریم خصوصی", 19f, ink, true, 18)
+        addResultCard("i", "مجوزهای حساس برنامه‌ها", "${privacyApps.size} برنامه مجوز دوربین، میکروفون یا موقعیت مکانی دارند. این موضوع به‌تنهایی نشانه بدافزار نیست.", blue)
+        root.addView(Button(this).apply {
+            text = "نمایش فهرست برنامه‌ها"
+            isAllCaps = false
+            setTextColor(blue)
+            background = round(Color.rgb(232, 240, 253), 13)
+            setOnClickListener { showPrivacyApps(privacyApps) }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+
+        addText("یادآوری", 12f, muted, false, 18)
+        addText("PhoneGuard فقط موارد قابل مشاهده در اندروید را گزارش می‌کند؛ نبود جاسوس‌افزار را تضمین نمی‌کند.", 12f, muted)
+        root.addView(Button(this).apply {
             text = "اسکن دوباره"
-            setOnClickListener { showWelcome() }
-        })
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            background = round(blue, 14)
+            setOnClickListener { runScan() }
+        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
     }
 
-    private fun secureSettingList(key: String): List<String> {
-        val raw = runCatching { Settings.Secure.getString(contentResolver, key) }.getOrNull()
-        return raw?.split(':')?.filter { it.isNotBlank() } ?: emptyList()
+    private fun showPrivacyApps(apps: List<Triple<String, String, List<String>>>) {
+        root.removeAllViews()
+        addText("فهرست مجوزهای حریم خصوصی", 22f, ink, true)
+        addText("این برنامه‌ها مجوزهایی مثل دوربین، میکروفون یا مکان دارند؛ صرف داشتن مجوز خطر یا آلودگی نیست.", 13f, muted)
+        apps.forEach { (name, pkg, permissions) ->
+            val c = card()
+            c.addView(text(name, 16f, ink, true))
+            c.addView(text(permissions.joinToString("، "), 13f, muted))
+            root.addView(c)
+        }
+        root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
     }
 
-    @Suppress("DEPRECATION")
-    private fun findAppsWithGrantedDangerousPermissions(): List<Triple<String, String, List<String>>> {
-        val dangerous = setOf(
-            "android.permission.CAMERA", "android.permission.RECORD_AUDIO",
-            "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION",
-            "android.permission.READ_CONTACTS", "android.permission.WRITE_CONTACTS",
-            "android.permission.READ_CALL_LOG", "android.permission.READ_SMS",
-            "android.permission.SEND_SMS", "android.permission.READ_PHONE_STATE",
-            "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO",
-            "android.permission.READ_MEDIA_AUDIO", "android.permission.READ_EXTERNAL_STORAGE",
-            "android.permission.WRITE_EXTERNAL_STORAGE"
-        )
-        return runCatching {
-            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
-                .mapNotNull { info ->
-                    val requested = info.requestedPermissions ?: return@mapNotNull null
-                    val flags = info.requestedPermissionsFlags ?: intArrayOf()
-                    val granted = requested.mapIndexedNotNull { index, permission ->
-                        if (permission in dangerous && index < flags.size && (flags[index] and 0x2) != 0)
-                            permission.substringAfterLast('.') else null
-                    }.distinct()
-                    if (granted.isEmpty()) null else Triple(
-                        info.applicationInfo?.loadLabel(packageManager)?.toString() ?: info.packageName,
-                        info.packageName, granted
-                    )
-                }.sortedBy { it.first.lowercase() }
-        }.getOrDefault(emptyList())
+    private fun addInfoCard(title: String, detail: String) {
+        val c = card()
+        c.addView(text(title, 16f, ink, true))
+        c.addView(text(detail, 13f, muted))
+        root.addView(c)
     }
 
-    private fun addText(value: String, size: Float, bold: Boolean = false) {
-        val view = TextView(this).apply {
+    private fun addResultCard(mark: String, title: String, detail: String, color: Int) {
+        val c = card()
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val dot = TextView(this).apply {
+            text = mark
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = round(color, 50)
+        }
+        row.addView(dot, LinearLayout.LayoutParams(dp(30), dp(30)))
+        row.addView(text(title, 15f, ink, true), LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+        c.addView(row)
+        c.addView(text(detail, 13f, muted))
+        root.addView(c)
+    }
+
+    private fun card(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16), dp(15), dp(16), dp(15))
+        background = round(Color.WHITE, 18)
+        elevation = dp(2).toFloat()
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+    }
+
+    private fun addText(value: String, size: Float, color: Int, bold: Boolean = false, top: Int = 0) {
+        root.addView(text(value, size, color, bold), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(top); bottomMargin = dp(7) })
+    }
+
+    private fun text(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
+        TextView(this).apply {
             text = value
             textSize = size
-            setTextColor(0xFF202124.toInt())
-            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, 12, 0, 12)
+            setTextColor(color)
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, dp(3), 0, dp(3))
         }
-        content.addView(view)
+
+    private fun round(color: Int, radius: Int) = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = dp(radius).toFloat()
     }
 
-    private fun statusRow(title: String, detail: String) {
-        addText(title, 16f, true)
-        addText(detail, 14f)
-        addDivider()
+    private fun settingPackages(key: String): List<String> {
+        val raw = safe { Settings.Secure.getString(contentResolver, key) } ?: return emptyList()
+        return raw.split(':').mapNotNull { part -> part.substringBefore('/').takeIf { it.isNotBlank() } }
     }
 
-    private fun addDivider() {
-        val line = View(this).apply { setBackgroundColor(0xFFE0E0E0.toInt()) }
-        content.addView(line, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
+    private fun privacyPermissionApps(): List<Triple<String, String, List<String>>> {
+        val wanted = setOf("android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION")
+        return safe {
+            @Suppress("DEPRECATION")
+            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS).mapNotNull { info ->
+                val req = info.requestedPermissions ?: return@mapNotNull null
+                val flags = info.requestedPermissionsFlags ?: intArrayOf()
+                val granted = req.mapIndexedNotNull { i, p ->
+                    if (p in wanted && i < flags.size && (flags[i] and 0x2) != 0) p.substringAfterLast('.') else null
+                }.distinct()
+                if (granted.isEmpty()) null else Triple(appLabel(info.packageName), info.packageName, granted)
+            }.sortedBy { it.first.lowercase() }
+        } ?: emptyList()
     }
+
+    private fun appLabel(pkg: String): String = safe {
+        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+    } ?: pkg
+
+    private fun isSystemPackage(pkg: String): Boolean = safe {
+        (packageManager.getApplicationInfo(pkg, 0).flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+    } ?: false
+
+    private inline fun <T> safe(block: () -> T): T? = try { block() } catch (_: Exception) { null }
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }
