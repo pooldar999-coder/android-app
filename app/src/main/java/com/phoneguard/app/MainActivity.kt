@@ -14,6 +14,7 @@ import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -161,17 +162,54 @@ class MainActivity : Activity() {
             packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS).mapNotNull { info ->
                 val app = info.applicationInfo ?: return@mapNotNull null
                 if (app.packageName == packageName) return@mapNotNull null
+
                 val flags = mutableListOf<String>()
-                if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) flags.add("نسخه قابل اشکال‌زدایی")
-                val installer = safe { packageManager.getInstallSourceInfo(info.packageName).installingPackageName } ?: "نامشخص"
-                if (installer == "نامشخص") flags.add("منبع نصب نامشخص")
+                if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                    flags.add("نسخه قابل اشکال‌زدایی")
+                }
+
+                val installer = if (Build.VERSION.SDK_INT >= 30) {
+                    safe { packageManager.getInstallSourceInfo(info.packageName).installingPackageName }
+                } else {
+                    safe { packageManager.getInstallerPackageName(info.packageName) }
+                } ?: "نامشخص"
+                if (installer == "نامشخص") flags.add("منبع نصب ثبت نشده")
+
+                // Count only permissions Android reports as granted; requested permissions alone
+                // are not evidence that an app can use them.
                 val requested = info.requestedPermissions ?: emptyArray()
-                val sensitive = requested.count { it in setOf("android.permission.RECEIVE_BOOT_COMPLETED", "android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.SYSTEM_ALERT_WINDOW", "android.permission.READ_SMS", "android.permission.RECORD_AUDIO", "android.permission.CAMERA") }
-                if (sensitive >= 4) flags.add("ترکیب چند مجوز حساس")
+                val permissionFlags = info.requestedPermissionsFlags ?: intArrayOf()
+                val sensitiveGranted = requested.mapIndexedNotNull { index, permission ->
+                    val isSensitive = permission in setOf(
+                        "android.permission.READ_SMS",
+                        "android.permission.RECEIVE_SMS",
+                        "android.permission.SEND_SMS",
+                        "android.permission.RECORD_AUDIO",
+                        "android.permission.CAMERA",
+                        "android.permission.ACCESS_FINE_LOCATION",
+                        "android.permission.READ_CONTACTS"
+                    )
+                    if (isSensitive && index < permissionFlags.size &&
+                        (permissionFlags[index] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
+                    ) permission else null
+                }.distinct()
+                if (sensitiveGranted.size >= 3) {
+                    flags.add("۳ مجوز حساس یا بیشتر واقعاً اعطا شده")
+                }
+
                 if (flags.isEmpty()) null else {
                     val hash = runCatching {
-                        val sig = packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
-                        sig?.let { MessageDigest.getInstance("SHA-256").digest(it).joinToString("") { b -> "%02X".format(b) } } ?: "در دسترس نیست"
+                        val bytes = if (Build.VERSION.SDK_INT >= 28) {
+                            packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+                                .signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+                        } else {
+                            packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNATURES)
+                                .signatures?.firstOrNull()?.toByteArray()
+                        }
+                        bytes?.let {
+                            MessageDigest.getInstance("SHA-256").digest(it)
+                                .joinToString("") { b -> "%02X".format(b) }
+                        } ?: "در دسترس نیست"
                     }.getOrDefault("در دسترس نیست")
                     AppAudit(appLabel(info.packageName), info.packageName, installer, hash, flags)
                 }
