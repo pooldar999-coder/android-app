@@ -3,6 +3,10 @@ package com.phoneguard.app
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.content.pm.ApplicationInfo
+import java.security.MessageDigest
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -97,6 +101,7 @@ class MainActivity : Activity() {
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
         val warnings = highRisk.size + if (adb) 1 else 0
         val privacyApps = privacyPermissionApps()
+        val reviewApps = auditInstalledApps()
 
         addText("گزارش اسکن", 13f, blue, true)
         addText("نتیجه بررسی امنیتی", 26f, ink, true)
@@ -124,6 +129,9 @@ class MainActivity : Activity() {
         addResultCard(if (vpn) "i" else "✓", "VPN", if (vpn) "یک اتصال VPN فعال است؛ اگر خودتان روشن کرده‌اید طبیعی است." else "اتصال VPN فعالی شناسایی نشد.", if (vpn) amber else green)
         addResultCard(if (adb) "!" else "✓", "اشکال‌زدایی USB", if (adb) "روشن است؛ در صورت عدم نیاز خاموشش کنید." else "خاموش است.", if (adb) red else green)
 
+        addText("بررسی برنامه‌های نصب‌شده", 19f, ink, true, 18)
+        addResultCard(if (reviewApps.isEmpty()) "✓" else "!", "برنامه‌های نیازمند بازبینی", "${reviewApps.size} برنامه نشانه‌هایی مانند منبع نصب نامشخص یا نسخه قابل اشکال‌زدایی دارند. این موارد به‌تنهایی اثبات بدافزار نیستند.", if (reviewApps.isEmpty()) green else amber)
+        root.addView(Button(this).apply { text = "بررسی و مدیریت برنامه‌ها"; isAllCaps = false; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 13); setOnClickListener { showAppAudits(reviewApps) } }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
         addText("حریم خصوصی", 19f, ink, true, 18)
         addResultCard("i", "مجوزهای حساس برنامه‌ها", "${privacyApps.size} برنامه مجوز دوربین، میکروفون یا موقعیت مکانی دارند. این موضوع به‌تنهایی نشانه بدافزار نیست.", blue)
         root.addView(Button(this).apply {
@@ -145,6 +153,52 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
     }
 
+    private data class AppAudit(val name: String, val pkg: String, val installer: String, val hash: String, val flags: List<String>)
+
+    @Suppress("DEPRECATION")
+    private fun auditInstalledApps(): List<AppAudit> {
+        return safe {
+            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS).mapNotNull { info ->
+                val app = info.applicationInfo ?: return@mapNotNull null
+                if (app.packageName == packageName) return@mapNotNull null
+                val flags = mutableListOf<String>()
+                if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) flags.add("نسخه قابل اشکال‌زدایی")
+                val installer = safe { packageManager.getInstallSourceInfo(info.packageName).installingPackageName } ?: "نامشخص"
+                if (installer == "نامشخص") flags.add("منبع نصب نامشخص")
+                val requested = info.requestedPermissions ?: emptyArray()
+                val sensitive = requested.count { it in setOf("android.permission.RECEIVE_BOOT_COMPLETED", "android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.SYSTEM_ALERT_WINDOW", "android.permission.READ_SMS", "android.permission.RECORD_AUDIO", "android.permission.CAMERA") }
+                if (sensitive >= 4) flags.add("ترکیب چند مجوز حساس")
+                if (flags.isEmpty()) null else {
+                    val hash = runCatching {
+                        val sig = packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+                        sig?.let { MessageDigest.getInstance("SHA-256").digest(it).joinToString("") { b -> "%02X".format(b) } } ?: "در دسترس نیست"
+                    }.getOrDefault("در دسترس نیست")
+                    AppAudit(appLabel(info.packageName), info.packageName, installer, hash, flags)
+                }
+            }.sortedBy { it.name.lowercase() }
+        } ?: emptyList()
+    }
+
+    private fun showAppAudits(apps: List<AppAudit>) {
+        root.removeAllViews()
+        addText("بازبینی برنامه‌ها", 23f, ink, true)
+        addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
+        if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
+        apps.forEach { app ->
+            val c = card()
+            c.addView(text(app.name, 16f, ink, true))
+            c.addView(text(app.pkg, 11f, muted))
+            c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
+            c.addView(text("منبع نصب: ${app.installer}\nاثر انگشت گواهی SHA-256:\n${app.hash}", 11f, muted))
+            c.addView(Button(this).apply {
+                text = "مشاهده اطلاعات برنامه / حذف"
+                isAllCaps = false
+                setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) } }
+            })
+            root.addView(c)
+        }
+        root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
+    }
     private fun showPrivacyApps(apps: List<Triple<String, String, List<String>>>) {
         root.removeAllViews()
         addText("فهرست مجوزهای حریم خصوصی", 22f, ink, true)
