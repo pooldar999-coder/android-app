@@ -3,20 +3,24 @@ package com.phoneguard.app
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.Context
-import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 
 class MainActivity : Activity() {
     private lateinit var content: LinearLayout
+    private val handler = Handler(Looper.getMainLooper())
+    private var scanButton: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,19 +31,43 @@ class MainActivity : Activity() {
         }
         scroll.addView(content)
         setContentView(scroll)
-        render()
+        showWelcome()
     }
 
-    private fun render() {
+    private fun showWelcome() {
         content.removeAllViews()
         addText("PhoneGuard", 28f, true)
-        addText("بررسی امنیت گوشی", 18f, true)
-        addText("این برنامه فقط وضعیت‌های قابل مشاهده در اندروید را بررسی می‌کند. نتیجه‌ها نشانه قطعی هک یا سالم بودن گوشی نیستند و هیچ اطلاعاتی از گوشی ارسال نمی‌شود.", 14f)
-        content.addView(Button(this).apply {
-            text = "شروع بررسی دوباره"
-            setOnClickListener { render() }
-        })
-        addText("وضعیت‌های امنیتی", 20f, true)
+        addText("بررسی امنیت گوشی", 20f, true)
+        addText("با زدن دکمه زیر، بررسی وضعیت‌های امنیتی قابل مشاهده در اندروید شروع می‌شود. بررسی روی خود گوشی انجام می‌شود و هیچ اطلاعاتی ارسال نمی‌شود.", 15f)
+        scanButton = Button(this).apply {
+            text = "شروع اسکن امنیتی"
+            setOnClickListener { startScan() }
+        }
+        content.addView(scanButton)
+        addText("این ابزار اسکنر ضدویروس حرفه‌ای نیست و نمی‌تواند همه بدافزارها یا هک‌ها را تشخیص دهد.", 13f)
+    }
+
+    private fun startScan() {
+        scanButton?.isEnabled = false
+        scanButton?.text = "در حال بررسی..."
+        content.addView(ProgressBar(this).apply { isIndeterminate = true })
+        val progressText = TextView(this).apply {
+            text = "در حال بررسی تنظیمات امنیتی و مجوزهای برنامه‌ها..."
+            textSize = 15f
+            setTextColor(0xFF202124.toInt())
+            setPadding(0, 16, 0, 16)
+        }
+        content.addView(progressText)
+        // Allow the progress indicator to render before performing the local checks.
+        handler.postDelayed({
+            renderResults()
+        }, 900)
+    }
+
+    private fun renderResults() {
+        content.removeAllViews()
+        addText("نتیجه اسکن امنیتی", 25f, true)
+        addText("بررسی روی همین گوشی انجام شد؛ اطلاعاتی ارسال نشده است.", 14f)
 
         val adb = runCatching { Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 }.getOrDefault(false)
         statusRow("اشکال‌زدایی USB (ADB)", if (adb) "روشن است؛ اگر خودتان فعال نکرده‌اید خاموشش کنید." else "خاموش است.")
@@ -63,18 +91,22 @@ class MainActivity : Activity() {
         statusRow("برنامه‌های مدیر دستگاه", if (admins.isEmpty()) "موردی ثبت نشده است." else admins.joinToString("\n"))
 
         addText("برنامه‌های دارای مجوز حساس", 20f, true)
-        addText("این فهرست فقط مجوزهای خطرناکِ اعطا‌شده را نشان می‌دهد؛ داشتن مجوز به‌تنهایی به معنی بدافزار بودن برنامه نیست.", 14f)
+        addText("داشتن این مجوزها به‌تنهایی به معنی بدافزار بودن برنامه نیست؛ نام برنامه‌ها را بررسی کنید.", 14f)
         val apps = findAppsWithGrantedDangerousPermissions()
         if (apps.isEmpty()) {
-            addText("برنامه‌ای با مجوز حساسِ اعطا‌شده پیدا نشد یا امکان خواندن فهرست وجود نداشت.", 14f)
+            addText("برنامه‌ای با مجوز حساسِ اعطا‌شده پیدا نشد یا اندروید اجازه نمایش فهرست را نداد.", 14f)
         } else {
             apps.forEach { (name, pkg, permissions) ->
-                addText("${name}\nبسته: ${pkg}\nمجوزها: ${permissions.joinToString(", ")}", 14f)
+                addText("$name\nبسته: $pkg\nمجوزها: ${permissions.joinToString(", ")}", 14f)
                 addDivider()
             }
         }
-        addText("نکته مهم", 18f, true)
-        addText("برای بررسی دقیق‌تر، دسترسی‌های ناشناس را از مسیر تنظیمات گوشی بررسی کنید. PhoneGuard نمی‌تواند بدافزارهای پنهان، سرقت حساب‌ها یا دسترسی‌های سوءاستفاده‌شده را با قطعیت تشخیص دهد.", 14f)
+        addText("محدودیت مهم", 18f, true)
+        addText("این بررسی فقط تنظیمات و مجوزهای قابل مشاهده را گزارش می‌کند. تشخیص قطعی بدافزار، جاسوس‌افزار یا سرقت حساب‌ها از توان این نسخه خارج است.", 14f)
+        content.addView(Button(this).apply {
+            text = "اسکن دوباره"
+            setOnClickListener { showWelcome() }
+        })
     }
 
     private fun secureSettingList(key: String): List<String> {
@@ -100,7 +132,6 @@ class MainActivity : Activity() {
                     val requested = info.requestedPermissions ?: return@mapNotNull null
                     val flags = info.requestedPermissionsFlags ?: intArrayOf()
                     val granted = requested.mapIndexedNotNull { index, permission ->
-                        // Android PackageInfo.REQUESTED_PERMISSION_GRANTED is the bit value 0x2.
                         if (permission in dangerous && index < flags.size && (flags[index] and 0x2) != 0)
                             permission.substringAfterLast('.') else null
                     }.distinct()
