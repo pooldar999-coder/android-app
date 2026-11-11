@@ -101,7 +101,7 @@ class MainActivity : Activity() {
             dpm.activeAdmins?.map { it.packageName } ?: emptyList()
         } ?: emptyList()
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
-        val warnings = highRisk.size + if (adb) 1 else 0
+        val warnings = highRisk.size + reviewApps.size + if (adb) 1 else 0
         val privacyApps = privacyPermissionApps()
         val reviewApps = auditInstalledApps()
 
@@ -174,7 +174,9 @@ class MainActivity : Activity() {
                 } else {
                     safe { packageManager.getInstallerPackageName(info.packageName) }
                 } ?: "نامشخص"
-                if (installer == "نامشخص") flags.add("منبع نصب ثبت نشده")
+                if (installer == "نامشخص" && (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
+                    flags.add("منبع نصب ثبت نشده؛ به‌تنهایی نشانه بدافزار نیست")
+                }
 
                 // Count only permissions Android reports as granted; requested permissions alone
                 // are not evidence that an app can use them.
@@ -314,7 +316,7 @@ class MainActivity : Activity() {
                 val req = info.requestedPermissions ?: return@mapNotNull null
                 val flags = info.requestedPermissionsFlags ?: intArrayOf()
                 val granted = req.mapIndexedNotNull { i, p ->
-                    if (p in wanted && i < flags.size && (flags[i] and 0x2) != 0) p.substringAfterLast('.') else null
+                    if (p in wanted && i < flags.size && (flags[i] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0) p.substringAfterLast('.') else null
                 }.distinct()
                 if (granted.isEmpty()) null else Triple(appLabel(info.packageName), info.packageName, granted)
             }.sortedBy { it.first.lowercase() }
