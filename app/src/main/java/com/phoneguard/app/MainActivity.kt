@@ -8,6 +8,7 @@ import android.net.Uri
 import android.content.pm.ApplicationInfo
 import java.security.MessageDigest
 import android.content.pm.PackageManager
+import android.content.pm.PackageInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
