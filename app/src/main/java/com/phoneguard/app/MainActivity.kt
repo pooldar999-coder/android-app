@@ -101,9 +101,9 @@ class MainActivity : Activity() {
             dpm.activeAdmins?.map { it.packageName } ?: emptyList()
         } ?: emptyList()
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
-        val warnings = highRisk.size + reviewApps.size + if (adb) 1 else 0
         val privacyApps = privacyPermissionApps()
         val reviewApps = auditInstalledApps()
+        val warnings = highRisk.size + reviewApps.size + if (adb) 1 else 0
 
         addText("گزارش اسکن", 13f, blue, true)
         addText("نتیجه بررسی امنیتی", 26f, ink, true)
