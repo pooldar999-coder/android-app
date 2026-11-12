@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.content.pm.ApplicationInfo
 import java.security.MessageDigest
+import java.io.FileInputStream
 import android.content.pm.PackageManager
 import android.content.pm.PackageInfo
 import android.graphics.Color
@@ -320,6 +321,7 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     private fun auditInstalledApps(): List<AppAudit> {
+        val knownIndicators = safe { ThreatFeedManager(this).loadIndicators() } ?: emptyMap()
         return safe {
             packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS).mapNotNull { info ->
                 val app = info.applicationInfo ?: return@mapNotNull null
@@ -407,21 +409,26 @@ class MainActivity : Activity() {
                     flags.add("خطر ویژه کیف پول: صفحه‌کلید جایگزین همراه اینترنت؛ نیازمند بررسی برای ثبت عبارت بازیابی تایپ‌شده")
                 }
 
-                if (flags.isEmpty()) null else {
-                    val hash = runCatching {
-                        val bytes = if (Build.VERSION.SDK_INT >= 28) {
-                            packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-                                .signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
-                        } else {
-                            packageManager.getPackageInfo(info.packageName, PackageManager.GET_SIGNATURES)
-                                .signatures?.firstOrNull()?.toByteArray()
+                // Match SHA-256 of installed APK file, not its signing certificate.
+                val apkHash = runCatching {
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    FileInputStream(app.sourceDir).use { input ->
+                        val buffer = ByteArray(65536)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            digest.update(buffer, 0, count)
                         }
-                        bytes?.let {
-                            MessageDigest.getInstance("SHA-256").digest(it)
-                                .joinToString("") { b -> "%02X".format(b) }
-                        } ?: "در دسترس نیست"
-                    }.getOrDefault("در دسترس نیست")
-                    AppAudit(appLabel(info.packageName), info.packageName, installer, hash, flags)
+                    }
+                    digest.digest().joinToString("") { b -> "%02x".format(b) }
+                }.getOrDefault("در دسترس نیست")
+                val matched = knownIndicators[apkHash.lowercase()]
+                if (matched != null) {
+                    flags.add("تطبیق هش APK با بانک تهدیدها: " + matched.family + "؛ دسته " + matched.category + "؛ منبع " + matched.source)
+                }
+
+                if (flags.isEmpty()) null else {
+                    AppAudit(appLabel(info.packageName), info.packageName, installer, apkHash, flags)
                 }
             }.sortedBy { it.name.lowercase() }
         } ?: emptyList()
@@ -449,7 +456,7 @@ class MainActivity : Activity() {
                     c.addView(text(app.name, 16f, ink, true))
                     c.addView(text(app.pkg, 11f, muted))
                     c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
-                    c.addView(text("منبع نصب: ${app.installer}\\nاثر انگشت گواهی SHA-256:\\n${app.hash}", 11f, muted))
+                    c.addView(text("منبع نصب: ${app.installer}\\nهش فایل APK با SHA-256:\\n${app.hash}", 11f, muted))
                     c.addView(Button(this).apply {
                         text = "مشاهده اطلاعات برنامه / حذف"
                         isAllCaps = false
