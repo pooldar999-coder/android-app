@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var scanButton: Button? = null
     @Volatile private var completedAppAudit: List<AppAudit>? = null
+    @Volatile private var completedPackageChanges: List<PackageChange> = emptyList()
     private val blue = Color.rgb(35, 105, 220)
     private val ink = Color.rgb(29, 39, 56)
     private val muted = Color.rgb(105, 116, 132)
@@ -191,6 +192,7 @@ class MainActivity : Activity() {
         root.addView(bar, LinearLayout.LayoutParams(-1, dp(10)).apply { topMargin = dp(14); bottomMargin = dp(12) })
         stage.text = "شمارش و بررسی فایل‌های APK نصب‌شده…"
         Thread {
+            val changes = runCatching { compareInstalledPackages() }.getOrDefault(emptyList())
             val audited = runCatching { auditInstalledApps { value ->
                 runOnUiThread {
                     bar.progress = value
@@ -202,6 +204,7 @@ class MainActivity : Activity() {
                 percent.text = "۱۰۰٪ — بررسی برنامه‌ها تکمیل شد"
                 stage.text = "در حال آماده‌سازی گزارش نهایی…"
                 completedAppAudit = audited
+                completedPackageChanges = changes
                 showResults()
             }
         }.start()
@@ -241,6 +244,76 @@ class MainActivity : Activity() {
     }
 
     private data class Finding(val title: String, val detail: String)
+    private data class PackageSnapshot(val version: String, val firstInstall: Long, val lastUpdate: Long, val installer: String)
+    private data class PackageChange(val label: String, val packageName: String, val kind: String, val detail: String)
+
+    @Suppress("DEPRECATION")
+    private fun compareInstalledPackages(): List<PackageChange> {
+        val prefs = getSharedPreferences("phoneguard_inventory", MODE_PRIVATE)
+        val previousRaw = prefs.getString("packages", null)
+        val previous = mutableMapOf<String, PackageSnapshot>()
+        if (!previousRaw.isNullOrBlank()) {
+            runCatching {
+                val old = org.json.JSONObject(previousRaw)
+                val keys = old.keys()
+                while (keys.hasNext()) {
+                    val pkg = keys.next()
+                    val item = old.getJSONObject(pkg)
+                    previous[pkg] = PackageSnapshot(
+                        item.optString("version"),
+                        item.optLong("firstInstall"),
+                        item.optLong("lastUpdate"),
+                        item.optString("installer", "نامشخص")
+                    )
+                }
+            }
+        }
+
+        val current = org.json.JSONObject()
+        val changes = mutableListOf<PackageChange>()
+        val installed = packageManager.getInstalledPackages(0)
+        installed.forEach { info ->
+            val pkg = info.packageName
+            if (pkg == packageName) return@forEach
+            val app = info.applicationInfo ?: return@forEach
+            val installer = if (Build.VERSION.SDK_INT >= 30) {
+                safe { packageManager.getInstallSourceInfo(pkg).installingPackageName }
+            } else {
+                safe { packageManager.getInstallerPackageName(pkg) }
+            } ?: "نامشخص"
+            val version = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode.toString() else info.versionCode.toString()
+            val snapshot = PackageSnapshot(version, info.firstInstallTime, info.lastUpdateTime, installer)
+            current.put(pkg, org.json.JSONObject().apply {
+                put("version", snapshot.version)
+                put("firstInstall", snapshot.firstInstall)
+                put("lastUpdate", snapshot.lastUpdate)
+                put("installer", snapshot.installer)
+            })
+            val old = previous[pkg]
+            if (old != null) {
+                if (old.version != snapshot.version || old.lastUpdate != snapshot.lastUpdate) {
+                    changes.add(PackageChange(
+                        appLabel(pkg), pkg, "به‌روزرسانی برنامه",
+                        "نسخه قبلی: ${old.version} — نسخه فعلی: ${snapshot.version}\nزمان آخرین به‌روزرسانی: " +
+                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(snapshot.lastUpdate)) +
+                            "\nمنبع نصب فعلی: ${snapshot.installer}"
+                    ))
+                }
+            } else if (previousRaw != null) {
+                changes.add(PackageChange(
+                    appLabel(pkg), pkg, "برنامه تازه‌نصب‌شده",
+                    "زمان نصب: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(snapshot.firstInstall)) +
+                        "\nمنبع نصب: ${snapshot.installer} — نصب جدید به‌تنهایی نشانه بدافزار نیست."
+                ))
+            }
+        }
+        val removed = previous.keys - installed.map { it.packageName }.toSet()
+        removed.forEach { pkg ->
+            changes.add(PackageChange(pkg, pkg, "برنامه حذف‌شده", "این بسته در اسکن فعلی دیگر نصب نیست."))
+        }
+        prefs.edit().putString("packages", current.toString()).putLong("snapshot_time", System.currentTimeMillis()).apply()
+        return changes.sortedWith(compareBy<PackageChange> { it.kind }.thenBy { it.label.lowercase() })
+    }
     private fun showResults() {
         root.removeAllViews()
         val adb = safe { Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 } ?: false
@@ -295,6 +368,20 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, dp(46)).apply { bottomMargin = dp(8) })
         }
         addResultCard(if (adb) "!" else "✓", "اشکال‌زدایی USB", if (adb) "روشن است؛ در صورت عدم نیاز خاموشش کنید." else "خاموش است.", if (adb) red else green)
+
+        addText("تغییرات از اسکن قبلی", 19f, ink, true, 18)
+        val changes = completedPackageChanges
+        val snapshotTime = getSharedPreferences("phoneguard_inventory", MODE_PRIVATE).getLong("snapshot_time", 0L)
+        if (snapshotTime == 0L) {
+            addResultCard("i", "ثبت خط مبنا", "این نخستین فهرست‌برداری است. از اسکن بعدی، نصب‌ها، به‌روزرسانی‌ها و حذف برنامه‌ها با این فهرست مقایسه می‌شوند.", blue)
+        } else if (changes.isEmpty()) {
+            addResultCard("✓", "تغییر تازه‌ای پیدا نشد", "نسبت به فهرست اسکن قبلی، برنامه جدید، به‌روزرسانی یا حذف‌شده‌ای شناسایی نشد.", green)
+        } else {
+            changes.forEach { change ->
+                val color = if (change.kind == "برنامه تازه‌نصب‌شده") amber else blue
+                addResultCard("i", "${change.kind}: ${change.label}", "${change.detail}\nشناسه بسته: ${change.packageName}", color)
+            }
+        }
 
         addText("بررسی برنامه‌های نصب‌شده", 19f, ink, true, 18)
         addResultCard(if (reviewApps.isEmpty()) "✓" else "!", "برنامه‌های نیازمند بازبینی", "${reviewApps.size} برنامه نشانه‌هایی مانند منبع نصب نامشخص یا نسخه قابل اشکال‌زدایی دارند. این موارد به‌تنهایی اثبات بدافزار نیستند.", if (reviewApps.isEmpty()) green else amber)
