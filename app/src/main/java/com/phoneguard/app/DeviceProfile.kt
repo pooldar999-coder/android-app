@@ -39,6 +39,6 @@ object DeviceProfile {
         } else {
             "پروفایل عمومی اندروید"
         }
-        return "سازنده: $manufacturer\\nبرند: $brand\\nمدل: $model\\nشناسه دستگاه: $device\\nاندروید: $android (API $sdk)\\n$interfaceName\\n$family\\nبررسی‌ها فقط از قابلیت‌های مجاز و قابل دسترس اندروید استفاده می‌کنند."
+        return "سازنده: $manufacturer\nبرند: $brand\nمدل: $model\nشناسه دستگاه: $device\nاندروید: $android (API $sdk)\n$interfaceName\n$family\nبررسی‌ها فقط از قابلیت‌های مجاز و قابل دسترس اندروید استفاده می‌کنند."
     }
 }
