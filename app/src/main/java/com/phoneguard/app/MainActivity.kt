@@ -335,6 +335,10 @@ class MainActivity : Activity() {
         val knownIndicators = safe { ThreatFeedManager(this).loadIndicators() } ?: emptyMap()
         val enabledAccessibility = settingPackages(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).toSet()
         val enabledNotificationListeners = settingPackages("enabled_notification_listeners").toSet()
+        val enabledKeyboardPackages = safe {
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .enabledInputMethodList.map { it.packageName }.toSet()
+        } ?: emptySet()
         return safe {
             val installed = packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
             if (installed.isEmpty()) {
@@ -400,7 +404,8 @@ class MainActivity : Activity() {
                 val hasAccessibilityService = declaresAccessibilityService && info.packageName in enabledAccessibility
                 val declaresNotificationListener = serviceInfo.any { it.permission == "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" }
                 val hasNotificationListener = declaresNotificationListener && info.packageName in enabledNotificationListeners
-                val hasKeyboardService = serviceInfo.any { it.permission == "android.permission.BIND_INPUT_METHOD" }
+                val declaresKeyboardService = serviceInfo.any { it.permission == "android.permission.BIND_INPUT_METHOD" }
+                val hasKeyboardService = declaresKeyboardService && info.packageName in enabledKeyboardPackages
                 val spywarePerms = setOf(
                     "android.permission.RECORD_AUDIO", "android.permission.CAMERA",
                     "android.permission.ACCESS_FINE_LOCATION", "android.permission.READ_SMS",
