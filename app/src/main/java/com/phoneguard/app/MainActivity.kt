@@ -74,6 +74,7 @@ class MainActivity : Activity() {
         addText("PHONEGUARD", 13f, blue, true)
         addText("مرکز امنیت گوشی", 27f, ink, true)
         addText("بررسی دسترسی‌های مهم و تنظیمات امنیتی دستگاه", 14f, muted)
+        addInfoCard("پروفایل دستگاه", DeviceProfile.summary(this))
         val hero = card()
         hero.setBackground(round(Color.rgb(24, 65, 133), 22))
         hero.addView(text("بررسی امنیتی گوشی شما", 19f, Color.WHITE, true))
