@@ -179,16 +179,27 @@ class MainActivity : Activity() {
         root.addView(stage, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         val meter = ScanRadarView(this)
         root.addView(meter, LinearLayout.LayoutParams(-1, dp(230)).apply { topMargin = dp(10) })
-        val percent = text("در حال بررسی واقعی برنامه‌ها و فایل‌های APK…", 14f, ink, true).apply { gravity = Gravity.CENTER }
+        val percent = text("۰٪ — آماده‌سازی فهرست برنامه‌ها", 14f, ink, true).apply { gravity = Gravity.CENTER }
         root.addView(percent, LinearLayout.LayoutParams(-1, -2))
-        val bar = ProgressBar(this).apply { isIndeterminate = true }
-        root.addView(bar, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(14); bottomMargin = dp(12) })
-        stage.text = "بررسی دسترسی‌ها و محاسبه اثرانگشت فایل‌های APK…"
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = false
+            max = 100
+            progress = 0
+        }
+        root.addView(bar, LinearLayout.LayoutParams(-1, dp(10)).apply { topMargin = dp(14); bottomMargin = dp(12) })
+        stage.text = "شمارش و بررسی فایل‌های APK نصب‌شده…"
         Thread {
-            val audited = runCatching { auditInstalledApps() }.getOrDefault(emptyList())
+            val audited = runCatching { auditInstalledApps { value ->
+                runOnUiThread {
+                    bar.progress = value
+                    percent.text = "$value٪ — بررسی برنامه‌ها و اثرانگشت APK"
+                }
+            } }.getOrDefault(emptyList())
             runOnUiThread {
+                bar.progress = 100
+                percent.text = "۱۰۰٪ — بررسی برنامه‌ها تکمیل شد"
+                stage.text = "در حال آماده‌سازی گزارش نهایی…"
                 completedAppAudit = audited
-                stage.text = "بررسی تمام شد؛ در حال آماده‌سازی گزارش…"
                 showResults()
             }
         }.start()
@@ -319,11 +330,18 @@ class MainActivity : Activity() {
     private data class AppAudit(val name: String, val pkg: String, val installer: String, val hash: String, val flags: List<String>)
 
     @Suppress("DEPRECATION")
-    private fun auditInstalledApps(): List<AppAudit> {
+    private fun auditInstalledApps(onProgress: (Int) -> Unit = {}): List<AppAudit> {
         val knownIndicators = safe { ThreatFeedManager(this).loadIndicators() } ?: emptyMap()
         return safe {
-            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS).mapNotNull { info ->
-                val app = info.applicationInfo ?: return@mapNotNull null
+            val installed = packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+            if (installed.isEmpty()) {
+                onProgress(100)
+                emptyList()
+            } else installed.mapIndexedNotNull { index, info ->
+                if (index == 0 || index % 5 == 0 || index == installed.lastIndex) {
+                    onProgress(((index + 1) * 100 / installed.size).coerceIn(0, 100))
+                }
+                val app = info.applicationInfo ?: return@mapIndexedNotNull null
                 if (app.packageName == packageName) return@mapNotNull null
 
                 val flags = mutableListOf<String>()
