@@ -272,6 +272,9 @@ class MainActivity : Activity() {
         val current = org.json.JSONObject()
         val changes = mutableListOf<PackageChange>()
         val installed = packageManager.getInstalledPackages(0)
+        if (previousRaw == null) {
+            changes.add(PackageChange("فهرست اولیه", "", "ثبت خط مبنا", "فهرست فعلی برنامه‌ها ذخیره شد؛ مقایسه نصب‌ها، به‌روزرسانی‌ها و حذف‌ها از اسکن بعدی آغاز می‌شود."))
+        }
         installed.forEach { info ->
             val pkg = info.packageName
             if (pkg == packageName) return@forEach
