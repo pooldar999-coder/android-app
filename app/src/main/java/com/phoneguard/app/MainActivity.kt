@@ -130,7 +130,16 @@ class MainActivity : Activity() {
         else findings.forEach { addResultCard("!", it.title, it.detail, red) }
 
         addText("وضعیت اتصال", 19f, ink, true, 18)
-        addResultCard(if (vpn) "i" else "✓", "VPN", if (vpn) "یک اتصال VPN فعال است؛ اگر خودتان روشن کرده‌اید طبیعی است." else "اتصال VPN فعالی شناسایی نشد.", if (vpn) amber else green)
+        addResultCard(if (vpn) "i" else "✓", "VPN", if (vpn) "یک اتصال VPN فعال است. اندروید نام برنامهٔ سازندهٔ تونل را از این API در اختیار این برنامه نمی‌گذارد؛ فعال بودن VPN به‌تنهایی خطر نیست." else "اتصال VPN فعالی شناسایی نشد.", if (vpn) amber else green)
+        if (vpn) {
+            root.addView(Button(this).apply {
+                text = "باز کردن تنظیمات VPN"
+                isAllCaps = false
+                setTextColor(blue)
+                background = round(Color.rgb(232, 240, 253), 13)
+                setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) } }
+            }, LinearLayout.LayoutParams(-1, dp(46)).apply { bottomMargin = dp(8) })
+        }
         addResultCard(if (adb) "!" else "✓", "اشکال‌زدایی USB", if (adb) "روشن است؛ در صورت عدم نیاز خاموشش کنید." else "خاموش است.", if (adb) red else green)
 
         addText("بررسی برنامه‌های نصب‌شده", 19f, ink, true, 18)
@@ -227,18 +236,28 @@ class MainActivity : Activity() {
         addText("بازبینی برنامه‌ها", 23f, ink, true)
         addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
         if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
-        apps.forEach { app ->
-            val c = card()
-            c.addView(text(app.name, 16f, ink, true))
-            c.addView(text(app.pkg, 11f, muted))
-            c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
-            c.addView(text("منبع نصب: ${app.installer}\nاثر انگشت گواهی SHA-256:\n${app.hash}", 11f, muted))
-            c.addView(Button(this).apply {
-                text = "مشاهده اطلاعات برنامه / حذف"
-                isAllCaps = false
-                setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) } }
-            })
-            root.addView(c)
+        val groups = listOf(
+            "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
+            "برنامه‌های با منبع نصب نامشخص" to apps.filter { app -> app.flags.any { it.contains("منبع نصب") } },
+            "برنامه‌های دارای چند مجوز حساس" to apps.filter { app -> app.flags.any { it.contains("مجوز حساس") } }
+        )
+        groups.forEach { (heading, entries) ->
+            if (entries.isNotEmpty()) {
+                addText("$heading (${entries.size})", 16f, ink, true, 14)
+                entries.forEach { app ->
+                    val c = card()
+                    c.addView(text(app.name, 16f, ink, true))
+                    c.addView(text(app.pkg, 11f, muted))
+                    c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
+                    c.addView(text("منبع نصب: ${app.installer}\\nاثر انگشت گواهی SHA-256:\\n${app.hash}", 11f, muted))
+                    c.addView(Button(this).apply {
+                        text = "مشاهده اطلاعات برنامه / حذف"
+                        isAllCaps = false
+                        setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) } }
+                    })
+                    root.addView(c)
+                }
+            }
         }
         root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
     }
