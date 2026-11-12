@@ -332,6 +332,43 @@ class MainActivity : Activity() {
                     flags.add("۳ مجوز حساس یا بیشتر واقعاً اعطا شده")
                 }
 
+                // Heuristic malware triage. These are behavioral indicators only, never a
+                // definitive malware verdict; benign apps can legitimately use these permissions.
+                val requestedSet = requested.toSet()
+                val grantedSet = sensitiveGranted.toSet()
+                val hasInternet = "android.permission.INTERNET" in requestedSet
+                val hasOverlay = "android.permission.SYSTEM_ALERT_WINDOW" in requestedSet
+                val hasBoot = "android.permission.RECEIVE_BOOT_COMPLETED" in requestedSet
+                val hasAccessibilityService = safe {
+                    packageManager.getPackageInfo(info.packageName, PackageManager.GET_SERVICES)
+                        .services?.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" } == true
+                } ?: false
+                val spywarePerms = setOf(
+                    "android.permission.RECORD_AUDIO", "android.permission.CAMERA",
+                    "android.permission.ACCESS_FINE_LOCATION", "android.permission.READ_SMS",
+                    "android.permission.RECEIVE_SMS", "android.permission.READ_CONTACTS",
+                    "android.permission.READ_CALL_LOG"
+                )
+                val spywareCount = grantedSet.count { it in spywarePerms }
+                if (hasInternet && (spywareCount >= 2 || (hasAccessibilityService && spywareCount >= 1))) {
+                    flags.add("الگوی دسترسی سازگار با جاسوس‌افزار: اینترنت همراه چند مجوز حساس")
+                }
+
+                val hasBroadFileAccess =
+                    "android.permission.MANAGE_EXTERNAL_STORAGE" in requestedSet ||
+                    "android.permission.WRITE_EXTERNAL_STORAGE" in requestedSet
+                val hasBatteryExemption =
+                    "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" in requestedSet
+                if (hasBroadFileAccess && hasBoot && hasBatteryExemption) {
+                    flags.add("الگوی دسترسی فایل و ماندگاری؛ نیازمند بررسی از نظر باج‌افزار")
+                }
+
+                val sideloaded = installer == "نامشخص" ||
+                    (Build.VERSION.SDK_INT >= 30 && installer !in setOf("com.android.vending", "com.google.android.packageinstaller"))
+                if (sideloaded && hasInternet && (spywareCount >= 1 || hasOverlay || hasAccessibilityService)) {
+                    flags.add("الگوی نصب خارج از فروشگاه همراه با دسترسی پرخطر؛ احتمال تروجان نیازمند بررسی")
+                }
+
                 if (flags.isEmpty()) null else {
                     val hash = runCatching {
                         val bytes = if (Build.VERSION.SDK_INT >= 28) {
