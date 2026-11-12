@@ -18,23 +18,43 @@ class ThreatFeedManager(private val context: Context) {
         private const val MAX_BYTES = 2 * 1024 * 1024
     }
 
+    @Synchronized
     fun loadIndicators(): Map<String, ThreatIndicator> {
-        val file = File(context.filesDir, "threat-feed.json")
-        if (!file.exists()) return emptyMap()
-        val entries = JSONObject(file.readText(Charsets.UTF_8)).getJSONArray("entries")
-        val result = mutableMapOf<String, ThreatIndicator>()
-        for (i in 0 until entries.length()) {
-            val item = entries.getJSONObject(i)
-            val hash = item.getString("sha256").lowercase()
-            result[hash] = ThreatIndicator(
-                hash, item.getString("category"), item.getString("family"),
-                item.optString("source", "نامشخص"), item.getString("source_url"),
-                item.optString("confidence", "نامشخص")
-            )
-        }
-        return result
+        // فایل محلی هم دوباره اعتبارسنجی می‌شود؛ خرابی یا دستکاری آن نباید باعث توقف اسکن شود.
+        return runCatching {
+            val file = File(context.filesDir, "threat-feed.json")
+            if (!file.exists() || file.length() > MAX_BYTES) return@runCatching emptyMap()
+            val json = JSONObject(file.readText(Charsets.UTF_8))
+            require(json.optInt("schema_version", -1) == 1)
+            require(json.getInt("version") > 0)
+            require(json.getLong("updated_at") > 0)
+            val entries = json.getJSONArray("entries")
+            require(entries.length() <= 50000)
+            val result = mutableMapOf<String, ThreatIndicator>()
+            for (i in 0 until entries.length()) {
+                val item = entries.getJSONObject(i)
+                val hash = item.getString("sha256").lowercase()
+                require(hash.matches(Regex("^[a-f0-9]{64}$")))
+                require(!result.containsKey(hash))
+                val category = item.getString("category")
+                require(category in setOf("trojan", "spyware", "ransomware", "other"))
+                val family = item.getString("family")
+                val source = item.getString("source")
+                val sourceUrl = item.getString("source_url")
+                val parsedUrl = URL(sourceUrl)
+                require(family.isNotBlank() && source.isNotBlank())
+                require(parsedUrl.protocol == "https" && parsedUrl.host.isNotBlank())
+                require(item.optString("sample_type").equals("APK", ignoreCase = true))
+                result[hash] = ThreatIndicator(
+                    hash, category, family, source, sourceUrl,
+                    item.optString("confidence", "نامشخص")
+                )
+            }
+            result
+        }.getOrDefault(emptyMap())
     }
 
+    @Synchronized
     fun update(): ThreatFeedInfo {
         val connection = (URL(FEED_URL).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
