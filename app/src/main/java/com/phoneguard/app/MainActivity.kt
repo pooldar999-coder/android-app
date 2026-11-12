@@ -37,6 +37,7 @@ import java.util.Locale
 class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var scanButton: Button? = null
+    @Volatile private var completedAppAudit: List<AppAudit>? = null
     private val blue = Color.rgb(35, 105, 220)
     private val ink = Color.rgb(29, 39, 56)
     private val muted = Color.rgb(105, 116, 132)
@@ -178,31 +179,19 @@ class MainActivity : Activity() {
         root.addView(stage, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         val meter = ScanRadarView(this)
         root.addView(meter, LinearLayout.LayoutParams(-1, dp(230)).apply { topMargin = dp(10) })
-        val percent = text("۰٪", 20f, ink, true).apply { gravity = Gravity.CENTER }
+        val percent = text("در حال بررسی واقعی برنامه‌ها و فایل‌های APK…", 14f, ink, true).apply { gravity = Gravity.CENTER }
         root.addView(percent, LinearLayout.LayoutParams(-1, -2))
-        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progress = 0
-            progressTintList = android.content.res.ColorStateList.valueOf(blue)
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(225, 233, 245))
-        }
+        val bar = ProgressBar(this).apply { isIndeterminate = true }
         root.addView(bar, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(14); bottomMargin = dp(12) })
-        val notes = listOf("بررسی اتصال‌ها و VPN…", "بررسی دسترسی‌های ویژه…", "بررسی مجوزهای حساس…", "بررسی برنامه‌های نصب‌شده…")
-        val animator = ValueAnimator.ofInt(0, 100).apply {
-            duration = 4200
-            interpolator = LinearInterpolator()
-            addUpdateListener { a ->
-                val value = a.animatedValue as Int
-                meter.progress = value
-                bar.progress = value
-                percent.text = "$value٪"
-                stage.text = notes[(value / 26).coerceIn(0, notes.lastIndex)]
+        stage.text = "بررسی دسترسی‌ها و محاسبه اثرانگشت فایل‌های APK…"
+        Thread {
+            val audited = runCatching { auditInstalledApps() }.getOrDefault(emptyList())
+            runOnUiThread {
+                completedAppAudit = audited
+                stage.text = "بررسی تمام شد؛ در حال آماده‌سازی گزارش…"
+                showResults()
             }
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) { showResults() }
-            })
-        }
-        animator.start()
+        }.start()
     }
 
     private inner class ScanRadarView(context: Context) : View(context) {
@@ -254,7 +243,7 @@ class MainActivity : Activity() {
         } ?: emptyList()
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
         val privacyApps = privacyPermissionApps()
-        val reviewApps = auditInstalledApps()
+        val reviewApps = completedAppAudit ?: auditInstalledApps()
         // Count all findings that require user review in the summary, including app-audit flags.
         // These are review indicators, not proof that an app is malicious.
         val warnings = highRisk.size + (if (adb) 1 else 0) + reviewApps.size
