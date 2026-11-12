@@ -122,7 +122,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         dialog.dismiss()
                         val message = result.fold(
-                            { info -> "نسخه بانک: " + info.version + "\\nتعداد امضاهای تأییدشده: " + info.entries + "\\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\\n\\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
+                            { info -> "نسخه بانک: " + info.version + "\nتعداد امضاهای تأییدشده: " + info.entries + "\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\n\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
                             { err -> "به‌روزرسانی انجام نشد: " + (err.message ?: "خطای ارتباط یا قالب نامعتبر") }
                         )
                         android.app.AlertDialog.Builder(this).setTitle("وضعیت بانک تهدیدها").setMessage(message).setPositiveButton("باشه", null).show()
@@ -455,7 +455,7 @@ class MainActivity : Activity() {
                     c.addView(text(app.name, 16f, ink, true))
                     c.addView(text(app.pkg, 11f, muted))
                     c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
-                    c.addView(text("منبع نصب: ${app.installer}\\nهش فایل APK با SHA-256:\\n${app.hash}", 11f, muted))
+                    c.addView(text("منبع نصب: ${app.installer}\nهش فایل APK با SHA-256:\n${app.hash}", 11f, muted))
                     c.addView(Button(this).apply {
                         text = "مشاهده اطلاعات برنامه / حذف"
                         isAllCaps = false
