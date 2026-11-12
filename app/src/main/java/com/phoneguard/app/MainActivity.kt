@@ -10,6 +10,11 @@ import java.security.MessageDigest
 import android.content.pm.PackageManager
 import android.content.pm.PackageInfo
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.animation.ValueAnimator
+import android.view.animation.LinearInterpolator
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
@@ -79,11 +84,70 @@ class MainActivity : Activity() {
 
     private fun runScan() {
         root.removeAllViews()
-        addText("در حال اسکن...", 25f, ink, true)
-        addText("در حال بررسی تنظیمات و دسترسی‌های قابل مشاهده در اندروید", 14f, muted)
-        val bar = ProgressBar(this).apply { isIndeterminate = true }
-        root.addView(bar, LinearLayout.LayoutParams(-1, dp(5)).apply { topMargin = dp(24); bottomMargin = dp(24) })
-        root.postDelayed({ showResults() }, 850)
+        addText("اسکن امنیتی", 25f, ink, true)
+        addText("در حال بررسی بخش‌های امنیتی گوشی…", 14f, muted)
+        val stage = text("آماده‌سازی اسکن", 15f, blue, true).apply { gravity = Gravity.CENTER }
+        root.addView(stage, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        val meter = ScanRadarView(this)
+        root.addView(meter, LinearLayout.LayoutParams(-1, dp(230)).apply { topMargin = dp(10) })
+        val percent = text("۰٪", 20f, ink, true).apply { gravity = Gravity.CENTER }
+        root.addView(percent, LinearLayout.LayoutParams(-1, -2))
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(blue)
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(225, 233, 245))
+        }
+        root.addView(bar, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(14); bottomMargin = dp(12) })
+        val notes = listOf("بررسی اتصال‌ها و VPN…", "بررسی دسترسی‌های ویژه…", "بررسی مجوزهای حساس…", "بررسی برنامه‌های نصب‌شده…")
+        val animator = ValueAnimator.ofInt(0, 100).apply {
+            duration = 4200
+            interpolator = LinearInterpolator()
+            addUpdateListener { a ->
+                val value = a.animatedValue as Int
+                meter.progress = value
+                bar.progress = value
+                percent.text = "$value٪"
+                stage.text = notes[(value / 26).coerceIn(0, notes.lastIndex)]
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) { showResults() }
+            })
+        }
+        animator.start()
+    }
+
+    private inner class ScanRadarView(context: Context) : View(context) {
+        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat(); color = Color.rgb(205, 218, 239) }
+        private val sweep = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = Color.argb(65, 35, 105, 220) }
+        private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = dp(3).toFloat(); strokeCap = Paint.Cap.ROUND; color = blue }
+        private val center = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = blue }
+        var progress: Int = 0
+            set(value) { field = value; invalidate() }
+        private var angle = 0f
+        private val rotation = ValueAnimator.ofFloat(0f, 360f).apply {
+            duration = 1800
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener { angle = it.animatedValue as Float; invalidate() }
+        }
+        override fun onAttachedToWindow() { super.onAttachedToWindow(); rotation.start() }
+        override fun onDetachedFromWindow() { rotation.cancel(); super.onDetachedFromWindow() }
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f
+            val radius = minOf(width, height) * 0.34f
+            for (scale in listOf(1f, 0.68f, 0.36f)) canvas.drawCircle(cx, cy, radius * scale, ring)
+            canvas.save()
+            canvas.rotate(angle, cx, cy)
+            canvas.drawArc(RectF(cx-radius, cy-radius, cx+radius, cy+radius), -38f, 38f, true, sweep)
+            canvas.drawLine(cx, cy, cx, cy-radius, line)
+            canvas.restore()
+            canvas.drawCircle(cx, cy, dp(6).toFloat(), center)
+            val label = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = dp(13).toFloat(); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
+            canvas.drawText("PHONEGUARD", cx, cy + radius + dp(28), label)
+        }
     }
 
     private data class Finding(val title: String, val detail: String)
