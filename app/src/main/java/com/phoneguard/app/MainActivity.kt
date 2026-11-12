@@ -350,7 +350,7 @@ class MainActivity : Activity() {
                     onProgress(((index + 1) * 100 / installed.size).coerceIn(0, 100))
                 }
                 val app = info.applicationInfo ?: return@mapIndexedNotNull null
-                if (app.packageName == packageName) return@mapNotNull null
+                if (app.packageName == packageName) return@mapIndexedNotNull null
 
                 val flags = mutableListOf<String>()
                 if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
