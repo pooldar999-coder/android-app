@@ -1,7 +1,28 @@
 {
   "schema_version": 1,
-  "version": 1,
-  "updated_at": 1794430800,
-  "description": "Curated Android malware APK SHA-256 indicators. Empty until verified APK hashes with provenance are reviewed and added. No synthetic indicators.",
-  "entries": []
+  "version": 2,
+  "updated_at": 1794498000,
+  "description": "Curated Android malware APK SHA-256 indicators with provenance. Coverage is limited; absence of a match does not indicate an app is safe.",
+  "entries": [
+    {
+      "sha256": "cee63a18cf8f25fad52a8184fbc3a617618cba3760d55528aa02975cc140d61d",
+      "category": "trojan",
+      "family": "GOVV / ShellA banking trojan",
+      "source": "Seizmann GOVV technical IOC analysis",
+      "source_url": "https://github.com/Seizmann/govv-banking-trojan-analysis/blob/main/IOCs.md",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "Outer stub APK; hash explicitly identified as APK in source."
+    },
+    {
+      "sha256": "449524566579de83d8a810bb06de985ed5a17ac533909968d5629d30bcb9bbe3",
+      "category": "trojan",
+      "family": "GOVV / ShellA banking trojan",
+      "source": "Seizmann GOVV technical IOC analysis",
+      "source_url": "https://github.com/Seizmann/govv-banking-trojan-analysis/blob/main/IOCs.md",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "Stage 3 banking APK; hash explicitly identified as APK in source."
+    }
+  ]
 }
