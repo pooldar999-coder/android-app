@@ -57,6 +57,14 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         root.removeAllViews()
+        root.addView(Button(this).apply {
+            text = "☰  منوی برنامه"
+            isAllCaps = false
+            textSize = 14f
+            setTextColor(blue)
+            background = round(Color.rgb(232, 240, 253), 14)
+            setOnClickListener { showAppMenu() }
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
         addText("PHONEGUARD", 13f, blue, true)
         addText("مرکز امنیت گوشی", 27f, ink, true)
         addText("بررسی دسترسی‌های مهم و تنظیمات امنیتی دستگاه", 14f, muted)
@@ -86,18 +94,49 @@ class MainActivity : Activity() {
             textSize = 15f
             setTextColor(red)
             background = round(Color.rgb(255, 238, 236), 14)
-            setOnClickListener {
-                android.app.AlertDialog.Builder(this@MainActivity)
-                    .setTitle("خروج از PhoneGuard")
-                    .setMessage("برنامه کاملاً بسته می‌شود و فعالیت پس‌زمینه‌ای برای ادامه ندارد.")
-                    .setNegativeButton("انصراف", null)
-                    .setPositiveButton("خروج") { _, _ ->
-                        finishAffinity()
-                        if (Build.VERSION.SDK_INT >= 21) finishAndRemoveTask()
-                    }
-                    .show()
-            }
+            setOnClickListener { confirmExit() }
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(12) })
+    }
+
+
+    private fun showAppMenu() {
+        val items = arrayOf("صفحه اصلی", "راهنمای استفاده", "درباره PhoneGuard", "تنظیمات برنامه", "خروج کامل")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("منوی PhoneGuard")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showHome()
+                    1 -> android.app.AlertDialog.Builder(this)
+                        .setTitle("راهنمای استفاده")
+                        .setMessage("برای بررسی گوشی، «شروع اسکن امنیتی» را بزنید. نتیجه‌ها فقط شاخص‌های قابل مشاهده در اندروید هستند و هشدارها به‌تنهایی اثبات بدافزار نیستند. برای خروج کامل، از منو گزینه «خروج کامل» را انتخاب کنید.")
+                        .setPositiveButton("متوجه شدم", null)
+                        .show()
+                    2 -> android.app.AlertDialog.Builder(this)
+                        .setTitle("درباره PhoneGuard")
+                        .setMessage("PhoneGuard\nابزار بررسی امنیت و حریم خصوصی اندروید\n\nسازنده: mehdiroomiany@gmail.com\nنسخه: 1.0")
+                        .setPositiveButton("بستن", null)
+                        .setNeutralButton("تماس با سازنده") { _, _ ->
+                            runCatching { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:mehdiroomiany@gmail.com"))) }
+                        }
+                        .show()
+                    3 -> runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+                    4 -> confirmExit()
+                }
+            }
+            .setNegativeButton("بستن", null)
+            .show()
+    }
+
+    private fun confirmExit() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("خروج از PhoneGuard")
+            .setMessage("برنامه بسته می‌شود و سرویس پس‌زمینه‌ای برای ادامه فعالیت ندارد.")
+            .setNegativeButton("انصراف", null)
+            .setPositiveButton("خروج") { _, _ ->
+                finishAffinity()
+                if (Build.VERSION.SDK_INT >= 21) finishAndRemoveTask()
+            }
+            .show()
     }
 
     private fun runScan() {
