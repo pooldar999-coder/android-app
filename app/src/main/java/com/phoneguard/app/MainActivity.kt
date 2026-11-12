@@ -750,8 +750,8 @@ class MainActivity : Activity() {
             .sortedByDescending { it.value }
             .take(8)
         if (totals.isEmpty()) return "در ۲۴ ساعت اخیر داده قابل نمایشی ثبت نشده است."
-        return "زمان استفاده در پیش‌زمینه؛ نه فعالیت پس‌زمینه:\\n" +
-            totals.joinToString("\\n") { (pkg, millis) ->
+        return "زمان استفاده در پیش‌زمینه؛ نه فعالیت پس‌زمینه:\n" +
+            totals.joinToString("\n") { (pkg, millis) ->
                 val minutes = (millis / 60000L).coerceAtLeast(1L)
                 appLabel(pkg) + ": " + (minutes / 60L) + " ساعت و " + (minutes % 60L) + " دقیقه"
             }
