@@ -305,6 +305,8 @@ class MainActivity : Activity() {
 
         addText("یادآوری", 12f, muted, false, 18)
         addText("PhoneGuard فقط موارد قابل مشاهده در اندروید را گزارش می‌کند؛ نبود جاسوس‌افزار را تضمین نمی‌کند.", 12f, muted)
+        addText("محافظت ویژه کیف پول رمزارز", 18f, ink, true, 18)
+        addText("بررسی الگوهای دسترس‌پذیری، پنجره شناور، اعلان‌ها و صفحه‌کلیدهای جایگزین که ممکن است برای سرقت عبارت بازیابی، کدهای تأیید یا جعل صفحه کیف پول سوءاستفاده شوند. اندروید پایش مخفی و دائمی کلیپ‌بورد را مجاز نمی‌کند؛ بنابراین تعویض آدرس در لحظه قابل تضمین نیست.", 12f, muted)
         root.addView(Button(this).apply {
             text = "اسکن دوباره"
             isAllCaps = false
@@ -366,10 +368,10 @@ class MainActivity : Activity() {
                 val hasInternet = "android.permission.INTERNET" in requestedSet
                 val hasOverlay = "android.permission.SYSTEM_ALERT_WINDOW" in requestedSet
                 val hasBoot = "android.permission.RECEIVE_BOOT_COMPLETED" in requestedSet
-                val hasAccessibilityService = safe {
-                    packageManager.getPackageInfo(info.packageName, PackageManager.GET_SERVICES)
-                        .services?.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" } == true
-                } ?: false
+                val serviceInfo = safe { packageManager.getPackageInfo(info.packageName, PackageManager.GET_SERVICES).services } ?: emptyArray()
+                val hasAccessibilityService = serviceInfo.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" }
+                val hasNotificationListener = serviceInfo.any { it.permission == "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" }
+                val hasKeyboardService = serviceInfo.any { it.permission == "android.permission.BIND_INPUT_METHOD" }
                 val spywarePerms = setOf(
                     "android.permission.RECORD_AUDIO", "android.permission.CAMERA",
                     "android.permission.ACCESS_FINE_LOCATION", "android.permission.READ_SMS",
@@ -394,6 +396,15 @@ class MainActivity : Activity() {
                     (Build.VERSION.SDK_INT >= 30 && installer !in setOf("com.android.vending", "com.google.android.packageinstaller"))
                 if (sideloaded && hasInternet && (spywareCount >= 1 || hasOverlay || hasAccessibilityService)) {
                     flags.add("الگوی نصب خارج از فروشگاه همراه با دسترسی پرخطر؛ احتمال تروجان نیازمند بررسی")
+                }
+                if (hasInternet && hasAccessibilityService && hasOverlay) {
+                    flags.add("خطر ویژه کیف پول: اینترنت + دسترس‌پذیری + پنجره شناور؛ امکان خواندن صفحه یا نمایش پنجره جعلی")
+                }
+                if (hasInternet && hasNotificationListener) {
+                    flags.add("خطر ویژه کیف پول: خواندن اعلان‌ها همراه اینترنت؛ احتمال مشاهده کدهای تأیید و اعلان‌های کیف پول")
+                }
+                if (hasInternet && hasKeyboardService) {
+                    flags.add("خطر ویژه کیف پول: صفحه‌کلید جایگزین همراه اینترنت؛ نیازمند بررسی برای ثبت عبارت بازیابی تایپ‌شده")
                 }
 
                 if (flags.isEmpty()) null else {
@@ -424,6 +435,10 @@ class MainActivity : Activity() {
         val groups = listOf(
             "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
             "برنامه‌های با منبع نصب نامشخص" to apps.filter { app -> app.flags.any { it.contains("منبع نصب") } },
+            "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق دارد") } },
+            "الگوهای جاسوس‌افزار" to apps.filter { app -> app.flags.any { it.contains("جاسوس‌افزار") } },
+            "الگوهای تروجان" to apps.filter { app -> app.flags.any { it.contains("تروجان") } },
+            "الگوهای باج‌افزار" to apps.filter { app -> app.flags.any { it.contains("باج‌افزار") } },
             "برنامه‌های دارای چند مجوز حساس" to apps.filter { app -> app.flags.any { it.contains("مجوز حساس") } }
         )
         groups.forEach { (heading, entries) ->
