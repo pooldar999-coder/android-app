@@ -442,7 +442,7 @@ class MainActivity : Activity() {
         val groups = listOf(
             "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
             "برنامه‌های با منبع نصب نامشخص" to apps.filter { app -> app.flags.any { it.contains("منبع نصب") } },
-            "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق دارد") } },
+            "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق هش APK") } },
             "الگوهای جاسوس‌افزار" to apps.filter { app -> app.flags.any { it.contains("جاسوس‌افزار") } },
             "الگوهای تروجان" to apps.filter { app -> app.flags.any { it.contains("تروجان") } },
             "الگوهای باج‌افزار" to apps.filter { app -> app.flags.any { it.contains("باج‌افزار") } },
