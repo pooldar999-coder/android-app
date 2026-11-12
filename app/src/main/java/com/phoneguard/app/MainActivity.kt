@@ -60,6 +60,23 @@ class MainActivity : Activity() {
         scroll.addView(root)
         setContentView(scroll)
         showHome()
+        scheduleThreatFeedRefresh()
+    }
+
+    private fun scheduleThreatFeedRefresh() {
+        runCatching {
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
+            val request = androidx.work.PeriodicWorkRequest.Builder(
+                ThreatFeedWorker::class.java, 24, java.util.concurrent.TimeUnit.HOURS
+            ).setConstraints(constraints).build()
+            androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "phoneguard-threat-feed-daily",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                request
+            )
+        }
     }
 
     private fun showHome() {
