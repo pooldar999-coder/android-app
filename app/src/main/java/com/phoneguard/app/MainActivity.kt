@@ -520,7 +520,26 @@ class MainActivity : Activity() {
                         ops.checkOpNoThrow(AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, app.uid, app.packageName) == AppOpsManager.MODE_ALLOWED
                     } ?: false)
                 val hasBoot = "android.permission.RECEIVE_BOOT_COMPLETED" in requestedSet
-                val serviceInfo = safe { packageManager.getPackageInfo(info.packageName, PackageManager.GET_SERVICES).services } ?: emptyArray()
+                // Inventory declared services and broadcast receivers. Android does not
+                // expose whether another app's component is currently running to ordinary apps.
+                val componentInfo = safe {
+                    packageManager.getPackageInfo(
+                        info.packageName,
+                        PackageManager.GET_SERVICES or PackageManager.GET_RECEIVERS
+                    )
+                }
+                val serviceInfo = componentInfo?.services ?: emptyArray()
+                val receiverInfo = componentInfo?.receivers ?: emptyArray()
+                val exportedServices = serviceInfo.count { it.exported && it.permission.isNullOrBlank() }
+                val exportedReceivers = receiverInfo.count { it.exported && it.permission.isNullOrBlank() }
+                if ((app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 &&
+                    (exportedServices > 0 || exportedReceivers > 0) &&
+                    (hasInternet || installer == "نامشخص")
+                ) {
+                    flags.add(
+                        "اجزای اعلام‌شده قابل دسترسی از بیرون: سرویس بدون مجوز=$exportedServices، گیرنده بدون مجوز=$exportedReceivers؛ فقط نیازمند بررسی است و فعالیت فعلی را ثابت نمی‌کند"
+                    )
+                }
                 val declaresAccessibilityService = serviceInfo.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" }
                 val hasAccessibilityService = declaresAccessibilityService && info.packageName in enabledAccessibility
                 val declaresNotificationListener = serviceInfo.any { it.permission == "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" }
