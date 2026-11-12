@@ -353,6 +353,19 @@ class MainActivity : Activity() {
                 if (app.packageName == packageName) return@mapIndexedNotNull null
 
                 val flags = mutableListOf<String>()
+
+                // Hidden-app inventory: lack of a launcher entry or a custom icon is
+                // informational only. Many legitimate Android components work this way.
+                val launchIntent = safe { packageManager.getLaunchIntentForPackage(info.packageName) }
+                if (launchIntent == null) {
+                    flags.add("برنامه صفحه اجرای معمولی ندارد؛ ممکن است سرویس یا افزونه سیستمی باشد، بررسی کنید")
+                }
+                if (app.icon == 0) {
+                    flags.add("برنامه آیکون اختصاصی ندارد؛ به‌تنهایی نشانه بدافزار نیست")
+                }
+                if (!app.enabled) {
+                    flags.add("برنامه در حال حاضر غیرفعال است")
+                }
                 if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     flags.add("نسخه قابل اشکال‌زدایی")
                 }
@@ -473,6 +486,7 @@ class MainActivity : Activity() {
         addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
         if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
         val groups = listOf(
+            "برنامه‌های بدون آیکون یا صفحه اجرای معمولی" to apps.filter { app -> app.flags.any { it.contains("آیکون اختصاصی") || it.contains("صفحه اجرای معمولی") } },
             "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
             "برنامه‌های با منبع نصب نامشخص" to apps.filter { app -> app.flags.any { it.contains("منبع نصب") } },
             "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق هش APK") } },
