@@ -1,6 +1,7 @@
 package com.phoneguard.app
 
 import android.app.Activity
+import android.app.AppOpsManager
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
@@ -332,6 +333,8 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     private fun auditInstalledApps(onProgress: (Int) -> Unit = {}): List<AppAudit> {
         val knownIndicators = safe { ThreatFeedManager(this).loadIndicators() } ?: emptyMap()
+        val enabledAccessibility = settingPackages(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).toSet()
+        val enabledNotificationListeners = settingPackages("enabled_notification_listeners").toSet()
         return safe {
             val installed = packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
             if (installed.isEmpty()) {
@@ -385,11 +388,18 @@ class MainActivity : Activity() {
                 val requestedSet = requested.toSet()
                 val grantedSet = sensitiveGranted.toSet()
                 val hasInternet = "android.permission.INTERNET" in requestedSet
-                val hasOverlay = "android.permission.SYSTEM_ALERT_WINDOW" in requestedSet
+                // SYSTEM_ALERT_WINDOW is a special AppOps grant; merely requesting it is not enough.
+                val hasOverlay = "android.permission.SYSTEM_ALERT_WINDOW" in requestedSet &&
+                    (safe {
+                        val ops = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+                        ops.checkOpNoThrow(AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, app.uid, app.packageName) == AppOpsManager.MODE_ALLOWED
+                    } ?: false)
                 val hasBoot = "android.permission.RECEIVE_BOOT_COMPLETED" in requestedSet
                 val serviceInfo = safe { packageManager.getPackageInfo(info.packageName, PackageManager.GET_SERVICES).services } ?: emptyArray()
-                val hasAccessibilityService = serviceInfo.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" }
-                val hasNotificationListener = serviceInfo.any { it.permission == "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" }
+                val declaresAccessibilityService = serviceInfo.any { it.permission == "android.permission.BIND_ACCESSIBILITY_SERVICE" }
+                val hasAccessibilityService = declaresAccessibilityService && info.packageName in enabledAccessibility
+                val declaresNotificationListener = serviceInfo.any { it.permission == "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" }
+                val hasNotificationListener = declaresNotificationListener && info.packageName in enabledNotificationListeners
                 val hasKeyboardService = serviceInfo.any { it.permission == "android.permission.BIND_INPUT_METHOD" }
                 val spywarePerms = setOf(
                     "android.permission.RECORD_AUDIO", "android.permission.CAMERA",
