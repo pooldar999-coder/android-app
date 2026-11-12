@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "version": 2,
+  "version": 3,
   "updated_at": 1794498000,
-  "description": "Curated Android malware APK SHA-256 indicators with provenance. Coverage is limited; absence of a match does not indicate an app is safe.",
+  "description": "Curated Android malware APK SHA-256 indicators with source provenance. Coverage is limited; absence of a match does not indicate an app is safe.",
   "entries": [
     {
       "sha256": "cee63a18cf8f25fad52a8184fbc3a617618cba3760d55528aa02975cc140d61d",
@@ -23,6 +23,66 @@
       "confidence": "high",
       "sample_type": "APK",
       "notes": "Stage 3 banking APK; hash explicitly identified as APK in source."
+    },
+    {
+      "sha256": "0ad853b29a7b3677488018061b109bba59b1a518c8f33b48de31ec532be69856",
+      "category": "trojan",
+      "family": "CyberDakait / cyb3rx banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "9e7cdafcb473d28e134f87d758839265e97b03cf260a186d0e21e1de8aeb7fa8",
+      "category": "trojan",
+      "family": "CyberDakait / godz banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "43b217184f7765c699fd887fe22c07c7656483dc088e0214587a4890b2b6aee6",
+      "category": "trojan",
+      "family": "CyberDakait / GhostBat banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "d72335c0cbbcef002274c1a5087702ed4a91d91a79279104aaf111a33984ae5f",
+      "category": "trojan",
+      "family": "CyberDakait / tenxen banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "3b6c2dcba751d1ea05b83fd609e13423dff575705920a1c835ff0d5f92403ffc",
+      "category": "trojan",
+      "family": "CyberDakait / d-shine banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "555e0506979e0b26e4318c0f7dfff0e3dc5c81bb7e3925f2cadd1bdeb843570f",
+      "category": "trojan",
+      "family": "CyberDakait / appkjl banking trojan",
+      "source": "ThreatRoundup summary citing Group-IB CyberDakait report, 2026-10-28",
+      "source_url": "https://threatroundup.com/news/cyberdakait-android-banking-trojans-india/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
     }
   ]
 }
