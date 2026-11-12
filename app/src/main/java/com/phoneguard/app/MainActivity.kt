@@ -153,7 +153,7 @@ class MainActivity : Activity() {
     }
 
     private fun showAppMenu() {
-        val items = arrayOf("صفحه اصلی", "راهنمای استفاده", "درباره PhoneGuard", "تنظیمات برنامه", "خروج کامل")
+        val items = arrayOf("صفحه اصلی", "راهنمای استفاده", "درباره PhoneGuard", "تنظیمات برنامه", "تماس با سازنده", "خروج کامل")
         android.app.AlertDialog.Builder(this)
             .setTitle("منوی PhoneGuard")
             .setItems(items) { _, which ->
@@ -173,7 +173,15 @@ class MainActivity : Activity() {
                         }
                         .show()
                     3 -> runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
-                    4 -> confirmExit()
+                    4 -> runCatching {
+                        startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:mehdiroomiany@gmail.com")))
+                    }.onFailure {
+                        android.app.AlertDialog.Builder(this)
+                            .setMessage("برنامه‌ای برای ارسال ایمیل پیدا نشد. نشانی سازنده: mehdiroomiany@gmail.com")
+                            .setPositiveButton("باشه", null)
+                            .show()
+                    }
+                    5 -> confirmExit()
                 }
             }
             .setNegativeButton("بستن", null)
