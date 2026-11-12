@@ -15,7 +15,27 @@ class ThreatFeedManager(private val context: Context) {
         private const val MAX_BYTES = 2 * 1024 * 1024
     }
 
-    fun loadIndicators(): Map<String, ThreatIndicator> {\n        val file = File(context.filesDir, "threat-feed.json")\n        if (!file.exists()) return emptyMap()\n        val entries = JSONObject(file.readText(Charsets.UTF_8)).getJSONArray("entries")\n        val result = mutableMapOf<String, ThreatIndicator>()\n        for (i in 0 until entries.length()) {\n            val item = entries.getJSONObject(i)\n            val hash = item.getString("sha256").lowercase()\n            result[hash] = ThreatIndicator(hash, item.getString("category"), item.getString("family"), item.optString("source", "نامشخص"), item.getString("source_url"), item.optString("confidence", "نامشخص"))\n        }\n        return result\n    }\n\n    fun update(): ThreatFeedInfo {
+    fun loadIndicators(): Map<String, ThreatIndicator> {
+        val file = File(context.filesDir, "threat-feed.json")
+        if (!file.exists()) return emptyMap()
+        val entries = JSONObject(file.readText(Charsets.UTF_8)).getJSONArray("entries")
+        val result = mutableMapOf<String, ThreatIndicator>()
+        for (i in 0 until entries.length()) {
+            val item = entries.getJSONObject(i)
+            val hash = item.getString("sha256").lowercase()
+            result[hash] = ThreatIndicator(
+                hash,
+                item.getString("category"),
+                item.getString("family"),
+                item.optString("source", "نامشخص"),
+                item.getString("source_url"),
+                item.optString("confidence", "نامشخص")
+            )
+        }
+        return result
+    }
+
+    fun update(): ThreatFeedInfo {
         val connection = (URL(FEED_URL).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 12000
