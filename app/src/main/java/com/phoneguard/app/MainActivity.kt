@@ -80,6 +80,24 @@ class MainActivity : Activity() {
         addInfoCard("اتصالات و تنظیمات", "VPN و اشکال‌زدایی USB")
         addInfoCard("حریم خصوصی", "برنامه‌های دارای مجوز دوربین، میکروفون و موقعیت مکانی")
         addText("توجه: این ابزار آنتی‌ویروس حرفه‌ای نیست و نتیجه آن تشخیص قطعی بدافزار نیست.", 12f, muted, false, 16)
+        root.addView(Button(this).apply {
+            text = "خروج کامل از برنامه"
+            isAllCaps = false
+            textSize = 15f
+            setTextColor(red)
+            background = round(Color.rgb(255, 238, 236), 14)
+            setOnClickListener {
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("خروج از PhoneGuard")
+                    .setMessage("برنامه کاملاً بسته می‌شود و فعالیت پس‌زمینه‌ای برای ادامه ندارد.")
+                    .setNegativeButton("انصراف", null)
+                    .setPositiveButton("خروج") { _, _ ->
+                        finishAffinity()
+                        if (Build.VERSION.SDK_INT >= 21) finishAndRemoveTask()
+                    }
+                    .show()
+            }
+        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(12) })
     }
 
     private fun runScan() {
