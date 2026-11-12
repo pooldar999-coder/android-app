@@ -2,6 +2,7 @@ package com.phoneguard.app
 
 import android.app.Activity
 import android.app.AppOpsManager
+import android.app.usage.UsageStatsManager
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
@@ -406,6 +407,21 @@ class MainActivity : Activity() {
         addText("بررسی برنامه‌های نصب‌شده", 19f, ink, true, 18)
         addResultCard(if (reviewApps.isEmpty()) "✓" else "!", "برنامه‌های نیازمند بازبینی", "${reviewApps.size} برنامه نشانه‌هایی مانند منبع نصب نامشخص یا نسخه قابل اشکال‌زدایی دارند. این موارد به‌تنهایی اثبات بدافزار نیستند.", if (reviewApps.isEmpty()) green else amber)
         root.addView(Button(this).apply { text = "بررسی و مدیریت برنامه‌ها"; isAllCaps = false; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 13); setOnClickListener { showAppAudits(reviewApps) } }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        addText("فعالیت قابل مشاهده برنامه‌ها در ۲۴ ساعت اخیر", 18f, ink, true, 18)
+        if (usageAccessGranted()) {
+            val usageText = recentForegroundUsage()
+            addResultCard("i", "گزارش زمان استفاده", usageText, blue)
+        } else {
+            addResultCard("!", "دسترسی آمار استفاده فعال نیست", "این دسترسی اختیاری است. با فعال‌کردن آن، PhoneGuard فقط زمان استفاده در پیش‌زمینه را در ۲۴ ساعت اخیر می‌خواند؛ این قابلیت فعالیت پس‌زمینه یا سرویس‌های مخفی را نشان نمی‌دهد.", amber)
+            root.addView(Button(this).apply {
+                text = "فعال‌سازی اختیاری آمار استفاده"
+                isAllCaps = false
+                setTextColor(blue)
+                background = round(Color.rgb(232, 240, 253), 13)
+                setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } }
+            }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        }
+
         addText("حریم خصوصی", 19f, ink, true, 18)
         addResultCard("i", "مجوزهای حساس برنامه‌ها", "${privacyApps.size} برنامه مجوز دوربین، میکروفون یا موقعیت مکانی دارند. این موضوع به‌تنهایی نشانه بدافزار نیست.", blue)
         root.addView(Button(this).apply {
@@ -707,6 +723,38 @@ class MainActivity : Activity() {
     private fun settingPackages(key: String): List<String> {
         val raw = safe { Settings.Secure.getString(contentResolver, key) } ?: return emptyList()
         return raw.split(':').mapNotNull { part -> part.substringBefore('/').takeIf { it.isNotBlank() } }
+    }
+
+    private fun usageAccessGranted(): Boolean = safe {
+        val ops = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= 29) {
+            ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        }
+        mode == AppOpsManager.MODE_ALLOWED
+    } ?: false
+
+    @Suppress("DEPRECATION")
+    private fun recentForegroundUsage(): String {
+        val manager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val end = System.currentTimeMillis()
+        val start = end - 24L * 60L * 60L * 1000L
+        val totals = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
+            .orEmpty()
+            .filter { it.totalTimeInForeground > 0L }
+            .groupBy { it.packageName }
+            .mapValues { entry -> entry.value.sumOf { it.totalTimeInForeground } }
+            .entries
+            .sortedByDescending { it.value }
+            .take(8)
+        if (totals.isEmpty()) return "در ۲۴ ساعت اخیر داده قابل نمایشی ثبت نشده است."
+        return "زمان استفاده در پیش‌زمینه؛ نه فعالیت پس‌زمینه:\\n" +
+            totals.joinToString("\\n") { (pkg, millis) ->
+                val minutes = (millis / 60000L).coerceAtLeast(1L)
+                appLabel(pkg) + ": " + (minutes / 60L) + " ساعت و " + (minutes % 60L) + " دقیقه"
+            }
     }
 
     private fun privacyPermissionApps(): List<Triple<String, String, List<String>>> {
