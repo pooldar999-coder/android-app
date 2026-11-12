@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "updated_at": 1794430800,
+  "description": "Curated Android malware APK SHA-256 indicators. Empty until verified APK hashes with provenance are reviewed and added. No synthetic indicators.",
+  "entries": []
+}
