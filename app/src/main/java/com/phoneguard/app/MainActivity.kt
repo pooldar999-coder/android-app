@@ -29,6 +29,9 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var root: LinearLayout
@@ -83,6 +86,9 @@ class MainActivity : Activity() {
         }
         hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
         root.addView(hero)
+        root.addView(Button(this).apply { text = "به‌روزرسانی بانک تهدیدها"; isAllCaps = false; textSize = 15f; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 14); setOnClickListener { updateThreatDatabase() } }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12); bottomMargin = dp(8) })
+        val lastThreatUpdate = getSharedPreferences("phoneguard", MODE_PRIVATE).getLong("threat_updated", 0L)
+        addText(if (lastThreatUpdate > 0L) "آخرین به‌روزرسانی بانک: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(lastThreatUpdate)) else "بانک تهدیدها هنوز به‌روزرسانی نشده است.", 12f, muted)
         addText("چه چیزهایی بررسی می‌شوند؟", 18f, ink, true, 18)
         addInfoCard("دسترسی‌های ویژه", "دسترس‌پذیری، خواندن اعلان‌ها و مدیر دستگاه")
         addInfoCard("اتصالات و تنظیمات", "VPN و اشکال‌زدایی USB")
@@ -98,6 +104,27 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(12) })
     }
 
+
+    private fun updateThreatDatabase() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("به‌روزرسانی بانک تهدیدها")
+            .setMessage("دریافت فهرست نسخه‌دار از مخزن رسمی PhoneGuard انجام می‌شود. این بانک ممکن است پوشش محدودی داشته باشد.")
+            .setNegativeButton("انصراف", null)
+            .setPositiveButton("شروع") { _, _ ->
+                val dialog = android.app.ProgressDialog(this).apply { setMessage("در حال دریافت و اعتبارسنجی بانک…"); setCancelable(false); show() }
+                Thread {
+                    val result = runCatching { ThreatFeedManager(this).update() }
+                    runOnUiThread {
+                        dialog.dismiss()
+                        val message = result.fold(
+                            { info -> "نسخه بانک: " + info.version + "\\nتعداد امضاهای تأییدشده: " + info.entries + "\\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\\n\\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
+                            { err -> "به‌روزرسانی انجام نشد: " + (err.message ?: "خطای ارتباط یا قالب نامعتبر") }
+                        )
+                        android.app.AlertDialog.Builder(this).setTitle("وضعیت بانک تهدیدها").setMessage(message).setPositiveButton("باشه", null).show()
+                    }
+                }.start()
+            }.show()
+    }
 
     private fun showAppMenu() {
         val items = arrayOf("صفحه اصلی", "راهنمای استفاده", "درباره PhoneGuard", "تنظیمات برنامه", "خروج کامل")
