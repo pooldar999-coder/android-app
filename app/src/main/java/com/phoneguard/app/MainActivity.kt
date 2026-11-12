@@ -88,8 +88,11 @@ class MainActivity : Activity() {
         hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
         root.addView(hero)
         root.addView(Button(this).apply { text = "به‌روزرسانی بانک تهدیدها"; isAllCaps = false; textSize = 15f; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 14); setOnClickListener { updateThreatDatabase() } }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12); bottomMargin = dp(8) })
-        val lastThreatUpdate = getSharedPreferences("phoneguard", MODE_PRIVATE).getLong("threat_updated", 0L)
+        val feedPrefs = getSharedPreferences("phoneguard", MODE_PRIVATE)
+        val lastThreatUpdate = feedPrefs.getLong("threat_updated", 0L)
+        val feedCount = feedPrefs.getInt("threat_entries", 0)
         addText(if (lastThreatUpdate > 0L) "آخرین به‌روزرسانی بانک: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(lastThreatUpdate)) else "بانک تهدیدها هنوز به‌روزرسانی نشده است.", 12f, muted)
+        addText("تعداد امضاهای APK در بانک: $feedCount — پوشش محدود است و نبود تطبیق به معنی امن بودن برنامه نیست.", 12f, muted)
         addText("چه چیزهایی بررسی می‌شوند؟", 18f, ink, true, 18)
         addInfoCard("دسترسی‌های ویژه", "دسترس‌پذیری، خواندن اعلان‌ها و مدیر دستگاه")
         addInfoCard("اتصالات و تنظیمات", "VPN و اشکال‌زدایی USB")
@@ -308,6 +311,13 @@ class MainActivity : Activity() {
         addText("PhoneGuard فقط موارد قابل مشاهده در اندروید را گزارش می‌کند؛ نبود جاسوس‌افزار را تضمین نمی‌کند.", 12f, muted)
         addText("محافظت ویژه کیف پول رمزارز", 18f, ink, true, 18)
         addText("بررسی الگوهای دسترس‌پذیری، پنجره شناور، اعلان‌ها و صفحه‌کلیدهای جایگزین که ممکن است برای سرقت عبارت بازیابی، کدهای تأیید یا جعل صفحه کیف پول سوءاستفاده شوند. اندروید پایش مخفی و دائمی کلیپ‌بورد را مجاز نمی‌کند؛ بنابراین تعویض آدرس در لحظه قابل تضمین نیست.", 12f, muted)
+        root.addView(Button(this).apply {
+            text = "خروج کامل از برنامه"
+            isAllCaps = false
+            setTextColor(red)
+            background = round(Color.rgb(255, 238, 236), 14)
+            setOnClickListener { confirmExit() }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         root.addView(Button(this).apply {
             text = "اسکن دوباره"
             isAllCaps = false
