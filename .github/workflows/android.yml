@@ -22,6 +22,12 @@ jobs:
         with:
           gradle-version: 8.9
 
+      - name: Install approved lion launcher artwork
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          base64 --decode app/src/main/res/drawable-nodpi/phoneguard_lion.jpg.b64 > app/src/main/res/drawable-nodpi/phoneguard_lion.jpg
+          file app/src/main/res/drawable-nodpi/phoneguard_lion.jpg
+
       - name: Build debug APK
         run: gradle --no-daemon clean assembleDebug
 
