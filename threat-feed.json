@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "version": 3,
-  "updated_at": 1794498000,
-  "description": "Curated Android malware APK SHA-256 indicators with source provenance. Coverage is limited; absence of a match does not indicate an app is safe.",
+  "version": 4,
+  "updated_at": 1794549748,
+  "description": "Curated Android malware APK SHA-256 indicators with source provenance. This is a partial blocklist, not a complete antivirus database; absence of a match does not indicate an app is safe.",
   "entries": [
     {
       "sha256": "cee63a18cf8f25fad52a8184fbc3a617618cba3760d55528aa02975cc140d61d",
@@ -83,6 +83,46 @@
       "confidence": "high",
       "sample_type": "APK",
       "notes": "SHA-256 listed as an Android APK sample in the published hash appendix; attribution follows the cited Group-IB report."
+    },
+    {
+      "sha256": "0003445778b525bcb9d86b1651af6760da7a8f54a1d001c355a5d3ad915c94cb",
+      "category": "trojan",
+      "family": "BadPack Android malware",
+      "source": "Unit 42 / Palo Alto Networks",
+      "source_url": "https://unit42.paloaltonetworks.com/apk-badpack-malware-tampered-headers/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 explicitly listed by Unit 42 in its BadPack malware APK indicators."
+    },
+    {
+      "sha256": "015bd2e799049f5e474b80cbbdcd592ce4e2dfbfae183bada86a9b6ec103e25e",
+      "category": "trojan",
+      "family": "BadPack Android malware",
+      "source": "Unit 42 / Palo Alto Networks",
+      "source_url": "https://unit42.paloaltonetworks.com/apk-badpack-malware-tampered-headers/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 explicitly listed by Unit 42 in its BadPack malware APK indicators."
+    },
+    {
+      "sha256": "131135a7c911bd45db8801ca336fc051246280c90ae5dafc33e68499d8514761",
+      "category": "trojan",
+      "family": "BadPack Android malware",
+      "source": "Unit 42 / Palo Alto Networks",
+      "source_url": "https://unit42.paloaltonetworks.com/apk-badpack-malware-tampered-headers/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 explicitly listed by Unit 42 in its BadPack malware APK indicators."
+    },
+    {
+      "sha256": "90c41e52f5ac57b8bd056313063acadc753d44fb97c45c2dc58d4972fe9f9f21",
+      "category": "trojan",
+      "family": "BadPack Android malware",
+      "source": "Unit 42 / Palo Alto Networks",
+      "source_url": "https://unit42.paloaltonetworks.com/apk-badpack-malware-tampered-headers/",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "SHA-256 explicitly listed by Unit 42 in its BadPack malware APK indicators."
     }
   ]
 }
