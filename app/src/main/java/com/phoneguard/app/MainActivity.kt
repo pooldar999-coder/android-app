@@ -39,6 +39,7 @@ import java.util.Locale
 class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var scanButton: Button? = null
+    private var isHomeScreen: Boolean = true
     @Volatile private var completedAppAudit: List<AppAudit>? = null
     @Volatile private var completedPackageChanges: List<PackageChange> = emptyList()
     private val blue = Color.rgb(35, 105, 220)
@@ -81,6 +82,7 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        isHomeScreen = true
         root.removeAllViews()
         root.addView(Button(this).apply {
             text = "☰  منوی برنامه"
@@ -200,8 +202,26 @@ class MainActivity : Activity() {
             .show()
     }
 
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (!isHomeScreen) showHome() else super.onBackPressed()
+    }
+
+    private fun addHomeButton() {
+        root.addView(Button(this).apply {
+            text = "⌂  بازگشت به صفحه اصلی"
+            isAllCaps = false
+            textSize = 14f
+            setTextColor(blue)
+            background = round(Color.rgb(232, 240, 253), 14)
+            setOnClickListener { showHome() }
+        }, LinearLayout.LayoutParams(-1, dp(46)).apply { bottomMargin = dp(12) })
+    }
+
     private fun runScan() {
+        isHomeScreen = false
         root.removeAllViews()
+        addHomeButton()
         addText("اسکن امنیتی", 25f, ink, true)
         addText("در حال بررسی بخش‌های امنیتی گوشی…", 14f, muted)
         val stage = text("آماده‌سازی اسکن", 15f, blue, true).apply { gravity = Gravity.CENTER }
@@ -344,7 +364,9 @@ class MainActivity : Activity() {
         return changes.sortedWith(compareBy<PackageChange> { it.kind }.thenBy { it.label.lowercase() })
     }
     private fun showResults() {
+        isHomeScreen = false
         root.removeAllViews()
+        addHomeButton()
         val adb = safe { Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 } ?: false
         val vpn = safe {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -631,7 +653,9 @@ class MainActivity : Activity() {
     }
 
     private fun showAppAudits(apps: List<AppAudit>) {
+        isHomeScreen = false
         root.removeAllViews()
+        addHomeButton()
         addText("بازبینی برنامه‌ها", 23f, ink, true)
         addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
         if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
@@ -666,7 +690,9 @@ class MainActivity : Activity() {
         root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
     }
     private fun showPrivacyApps(apps: List<Triple<String, String, List<String>>>) {
+        isHomeScreen = false
         root.removeAllViews()
+        addHomeButton()
         addText("فهرست مجوزهای حریم خصوصی", 22f, ink, true)
         addText("این برنامه‌ها مجوزهایی مثل دوربین، میکروفون یا مکان دارند؛ صرف داشتن مجوز خطر یا آلودگی نیست.", 13f, muted)
         apps.forEach { (name, pkg, permissions) ->
