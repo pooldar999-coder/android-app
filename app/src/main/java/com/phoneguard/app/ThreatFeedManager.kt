@@ -6,6 +6,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -27,7 +28,10 @@ class ThreatFeedManager(private val context: Context) {
             val json = JSONObject(file.readText(Charsets.UTF_8))
             require(json.optInt("schema_version", -1) == 1)
             require(json.getInt("version") > 0)
-            require(json.getLong("updated_at") > 0)
+            val updatedAt = json.getLong("updated_at")
+            require(updatedAt > 0 && updatedAt <= System.currentTimeMillis() / 1000L + 86400L)
+            val prefs = context.getSharedPreferences("phoneguard", Context.MODE_PRIVATE)
+            require(json.getInt("version") >= prefs.getInt("threat_version", 0))
             val entries = json.getJSONArray("entries")
             require(entries.length() <= 50000)
             val result = mutableMapOf<String, ThreatIndicator>()
@@ -61,9 +65,13 @@ class ThreatFeedManager(private val context: Context) {
             connectTimeout = 12000
             readTimeout = 15000
             setRequestProperty("Accept", "application/json")
-            instanceFollowRedirects = true
+            // Redirects are disabled so the trusted feed origin cannot silently change.
+            instanceFollowRedirects = false
         }
         try {
+            check(connection.url.protocol == "https" && connection.url.host == "raw.githubusercontent.com") {
+                "نشانی سرور بانک تهدیدها مورد اعتماد نیست"
+            }
             check(connection.responseCode == HttpURLConnection.HTTP_OK) {
                 "سرور پاسخ موفق نداد: HTTP " + connection.responseCode
             }
@@ -112,6 +120,13 @@ class ThreatFeedManager(private val context: Context) {
             require(version >= oldVersion) { "نسخه دریافتی از نسخه نصب‌شده قدیمی‌تر است" }
 
             val target = File(context.filesDir, "threat-feed.json")
+            if (version == oldVersion && oldVersion > 0 && target.exists()) {
+                val currentDigest = MessageDigest.getInstance("SHA-256").digest(target.readBytes())
+                val incomingDigest = MessageDigest.getInstance("SHA-256").digest(bytes)
+                require(currentDigest.contentEquals(incomingDigest)) {
+                    "محتوای بانک تغییر کرده اما شماره نسخه افزایش نیافته است"
+                }
+            }
             val temp = File(context.filesDir, "threat-feed.tmp")
             FileOutputStream(temp).use { stream ->
                 stream.write(bytes)
