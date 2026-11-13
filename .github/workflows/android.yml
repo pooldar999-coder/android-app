@@ -18,17 +18,19 @@ jobs:
       - name: Sign threat feed with pinned ECDSA key
         env:
           FEED_SIGNING_KEY_B64: ${{ secrets.PHONEGUARD_FEED_SIGNING_KEY_B64 }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$FEED_SIGNING_KEY_B64" ]; then
-            echo "::warning::PHONEGUARD_FEED_SIGNING_KEY_B64 is not configured; signed feed generation was skipped."
+            echo "PHONEGUARD_SIGNING_KEY_READY=false" >> "$GITHUB_ENV"
+            echo "::warning::PHONEGUARD_FEED_SIGNING_KEY_B64 is not configured; signed feed and release signing were skipped."
             exit 0
           fi
           printf '%s' "$FEED_SIGNING_KEY_B64" | base64 -d > /tmp/phoneguard-feed-key.pem
+          chmod 600 /tmp/phoneguard-feed-key.pem
+          echo "PHONEGUARD_SIGNING_KEY_READY=true" >> "$GITHUB_ENV"
           openssl dgst -sha256 -sign /tmp/phoneguard-feed-key.pem -out /tmp/threat-feed.sig.bin threat-feed.json
           base64 -w0 /tmp/threat-feed.sig.bin > threat-feed.sig
           printf '\n' >> threat-feed.sig
-          rm -f /tmp/phoneguard-feed-key.pem /tmp/threat-feed.sig.bin
+          rm -f /tmp/threat-feed.sig.bin
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add threat-feed.sig
@@ -91,6 +93,29 @@ jobs:
           "$APKSIGNER" verify --verbose "$APK"
           "$AAPT" dump badging "$APK" | grep -E "^package: name='com.phoneguard.app'"
           sha256sum "$APK"
+
+      - name: Build and sign production release APK
+        if: env.PHONEGUARD_SIGNING_KEY_READY == 'true'
+        run: |
+          gradle --no-daemon assembleRelease
+          UNSIGNED_APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -type f | head -n 1)"
+          test -s "$UNSIGNED_APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)"
+          "$APKSIGNER" sign --key /tmp/phoneguard-feed-key.pem --cert phoneguard-release-cert.pem --out app/build/outputs/apk/release/PhoneGuard-release.apk "$UNSIGNED_APK"
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/PhoneGuard-release.apk
+          "$AAPT" dump badging app/build/outputs/apk/release/PhoneGuard-release.apk | grep -E "^package: name='com.phoneguard.app'"
+          sha256sum app/build/outputs/apk/release/PhoneGuard-release.apk
+          rm -f /tmp/phoneguard-feed-key.pem
+
+      - name: Upload signed production APK
+        if: env.PHONEGUARD_SIGNING_KEY_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhoneGuard-signed-release-apk
+          path: app/build/outputs/apk/release/PhoneGuard-release.apk
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload verified debug APK
         uses: actions/upload-artifact@v4
