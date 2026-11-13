@@ -23,7 +23,7 @@ class ThreatFeedManager(private val context: Context) {
         private const val SIGNATURE_URL = "https://raw.githubusercontent.com/pooldar999-coder/android-app/main/threat-feed.sig"
         private const val MAX_BYTES = 2 * 1024 * 1024
         // Pinned P-256 public key. The corresponding private key is stored only as a GitHub Actions secret.
-        private const val PUBLIC_KEY_DER_B64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER1Gf5B4tYaZ4tYr4AVDrV7Gvsy0/baQXszzH2Mk0D0JkKcNuldxeNyjlvFH+dFjOzHi+Z77XSgj5nYPaRQYszg=="
+        private const val PUBLIC_KEY_DER_B64 = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEz07EkLG6jC+5CA/wkQXIS0ZbqnD6DxdLfTpgh1TH9PWjvoMgM7VcmNylvzZxoc3FnBrFOg1H5k9n"
     }
 
     private fun verifySignature(data: ByteArray, signatureBytes: ByteArray) {
