@@ -1,20 +1,27 @@
 # PhoneGuard
 
-A basic Persian-language Android security inspection utility.
+ابزار فارسی بررسی امنیت و حریم خصوصی اندروید؛ نسخه فعلی برای ارزیابی شاخص‌های قابل مشاهده در گوشی طراحی شده و **آنتی‌ویروس یا ابزار جرم‌یابی قطعی نیست**.
 
-## Checks
-- Enabled accessibility services and notification listeners
-- Active device-admin apps
-- USB debugging state and active VPN transport
-- Installed apps with selected dangerous permissions currently granted
+## بررسی‌ها
+- سرویس‌های دسترس‌پذیری و شنونده‌های اعلان فعال
+- برنامه‌های مدیر دستگاه
+- وضعیت VPN و اشکال‌زدایی USB
+- برنامه‌های نصب‌شده، منبع نصب و برخی مجوزهای حساس
+- بررسی اثرانگشت SHA-256 فایل APK در برابر فهرست محدود شاخص‌های تهدید
+- تغییرات فهرست برنامه‌ها نسبت به اسکن قبلی
+- در صورت فعال‌سازی دستی Usage Access، نمایش برنامه‌هایی که در ۲۴ ساعت گذشته در پیش‌زمینه استفاده شده‌اند
 
-## Privacy
-No Internet permission is declared and no device information is uploaded.
+## بانک تهدیدها
+فایل `threat-feed.json` شامل شاخص‌های محدود و مستند APK است. نبود تطبیق هش **به معنی امن بودن برنامه نیست**. نسخه فعلی فید هنوز امضای دیجیتال مستقل ندارد؛ اعتبارسنجی JSON و دریافت HTTPS جایگزین امضای رمزنگاری‌شده ناشر نیستند. تا زمان افزودن امضای معتبر، این فید نباید به‌عنوان منبع اعتماد قطعی تلقی شود.
 
-## Limitations
-This is an informational checker, not an antivirus or forensic scanner. A permission or active service is not proof of compromise. It cannot reliably detect all malware, account compromise, or abuse of legitimate app permissions.
+## حریم خصوصی و شبکه
+برنامه برای دریافت به‌روزرسانی بانک تهدیدها از اینترنت استفاده می‌کند. اسکن نصب‌شده‌ها به‌صورت محلی انجام می‌شود و برنامه اطلاعات دستگاه را برای سرور ارسال نمی‌کند.
 
-## Build
-GitHub Actions builds a debug APK on pushes to the main branch and publishes it as a workflow artifact.
+## محدودیت‌های اندروید
+- اندروید معمولی اجازه فهرست‌کردن قابل اتکای تمام فرایندها و سرویس‌های در حال اجرای سایر برنامه‌ها را نمی‌دهد.
+- Usage Access اختیاری است و باید کاربر از تنظیمات فعال کند؛ این گزارش استفاده در پیش‌زمینه را نشان می‌دهد، نه فعالیت پس‌زمینه.
+- دسترسی به کلیپ‌بورد سایر برنامه‌ها و تشخیص همه بدافزارها ممکن نیست.
+- هشدارهای مبتنی بر مجوز یا اجزای export شده ممکن است مثبت کاذب باشند و نیاز به بررسی انسانی دارند.
 
-The permission-grant flag check uses the Android SDK bit value 0x2 for compatibility.
+## ساخت
+GitHub Actions نسخه debug را می‌سازد، امضای APK و شناسه بسته را بررسی می‌کند و پیش از ساخت، ساختار و شاخص‌های فایل بانک تهدیدها را اعتبارسنجی می‌کند. APK حاصل، نسخه debug است و برای انتشار عمومی یا استفاده به‌عنوان محصول امنیتی نهایی آماده محسوب نمی‌شود.
