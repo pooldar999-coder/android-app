@@ -24,8 +24,14 @@ jobs:
             echo "::warning::PHONEGUARD_FEED_SIGNING_KEY_B64 is not configured; signed feed and release signing were skipped."
             exit 0
           fi
+          set -euo pipefail
           printf '%s' "$FEED_SIGNING_KEY_B64" | base64 -d > /tmp/phoneguard-feed-key.pem
           chmod 600 /tmp/phoneguard-feed-key.pem
+          openssl pkey -in /tmp/phoneguard-feed-key.pem -check -noout
+          openssl x509 -in phoneguard-release-cert.pem -pubkey -noout | openssl pkey -pubin -outform DER > /tmp/cert-public.der
+          openssl pkey -in /tmp/phoneguard-feed-key.pem -pubout -outform DER > /tmp/key-public.der
+          cmp /tmp/cert-public.der /tmp/key-public.der
+          rm -f /tmp/cert-public.der /tmp/key-public.der
           echo "PHONEGUARD_SIGNING_KEY_READY=true" >> "$GITHUB_ENV"
           openssl dgst -sha256 -sign /tmp/phoneguard-feed-key.pem -out /tmp/threat-feed.sig.bin threat-feed.json
           base64 -w0 /tmp/threat-feed.sig.bin > threat-feed.sig
@@ -97,6 +103,7 @@ jobs:
       - name: Build and sign production release APK
         if: env.PHONEGUARD_SIGNING_KEY_READY == 'true'
         run: |
+          set -euo pipefail
           gradle --no-daemon assembleRelease
           UNSIGNED_APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -type f | head -n 1)"
           test -s "$UNSIGNED_APK"
@@ -118,6 +125,7 @@ jobs:
           retention-days: 30
 
       - name: Upload verified debug APK
+        if: always() && hashFiles('app/build/outputs/apk/debug/app-debug.apk') != ''
         uses: actions/upload-artifact@v4
         with:
           name: PhoneGuard-verified-debug-apk
