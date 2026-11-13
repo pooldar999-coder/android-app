@@ -3,13 +3,39 @@ name: Build Android APK
 on:
   push:
     branches: [ "main" ]
+    paths-ignore: [ "threat-feed.sig" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Sign threat feed with pinned ECDSA key
+        env:
+          FEED_SIGNING_KEY_B64: ${{ secrets.PHONEGUARD_FEED_SIGNING_KEY_B64 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$FEED_SIGNING_KEY_B64" ]; then
+            echo "::warning::PHONEGUARD_FEED_SIGNING_KEY_B64 is not configured; signed feed generation was skipped."
+            exit 0
+          fi
+          printf '%s' "$FEED_SIGNING_KEY_B64" | base64 -d > /tmp/phoneguard-feed-key.pem
+          openssl dgst -sha256 -sign /tmp/phoneguard-feed-key.pem -out /tmp/threat-feed.sig.bin threat-feed.json
+          base64 -w0 /tmp/threat-feed.sig.bin > threat-feed.sig
+          printf '\n' >> threat-feed.sig
+          rm -f /tmp/phoneguard-feed-key.pem /tmp/threat-feed.sig.bin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add threat-feed.sig
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sign threat feed"
+            git push
+          fi
 
       - name: Validate threat feed integrity
         run: |
