@@ -111,6 +111,17 @@ class MainActivity : Activity() {
         }
         hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
         root.addView(hero)
+        root.addView(Button(this).apply {
+            text = "محافظ کیف پول رمزارز"
+            isAllCaps = false
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            background = round(Color.rgb(24, 105, 82), 14)
+            setOnClickListener {
+                isHomeScreen = false
+                CryptoWalletGuard.show(this@MainActivity, root) { showHome() }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12); bottomMargin = dp(8) })
         root.addView(Button(this).apply { text = "به‌روزرسانی بانک تهدیدها"; isAllCaps = false; textSize = 15f; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 14); setOnClickListener { updateThreatDatabase() } }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12); bottomMargin = dp(8) })
         val feedPrefs = getSharedPreferences("phoneguard", MODE_PRIVATE)
         val lastThreatUpdate = feedPrefs.getLong("threat_updated", 0L)
