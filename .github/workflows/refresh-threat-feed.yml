@@ -1,0 +1,58 @@
+name: Refresh Android threat intelligence
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-android-threat-feed
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PhoneGuard
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect and validate new APK indicators
+        run: |
+          set -euo pipefail
+          python tools/refresh_android_iocs.py
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          data = json.loads(Path("threat-feed.json").read_text(encoding="utf-8"))
+          entries = data["entries"]
+          seen = set()
+          for i, item in enumerate(entries):
+              h = item.get("sha256", "").lower()
+              assert re.fullmatch(r"[0-9a-f]{64}", h), f"invalid SHA-256 at {i}"
+              assert h not in seen, f"duplicate SHA-256 at {i}"
+              seen.add(h)
+              assert item.get("sample_type", "").upper() == "APK"
+              assert item.get("source_url", "").startswith("https://")
+          print(f"Feed validated: v{data['version']}, {len(entries)} unique APK hashes")
+          PY
+
+      - name: Commit updated feed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add threat-feed.json
+          if git diff --cached --quiet; then
+            echo "No new indicators; no commit needed."
+          else
+            git commit -m "chore: refresh Android threat intelligence"
+            git push
+          fi
