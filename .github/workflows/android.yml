@@ -58,17 +58,32 @@ jobs:
           cmp /tmp/cert-public.der /tmp/key-public.der
           rm -f /tmp/cert-public.der /tmp/key-public.der
           echo "PHONEGUARD_SIGNING_KEY_READY=true" >> "$GITHUB_ENV"
-          openssl dgst -sha256 -sign /tmp/phoneguard-feed-key.pem -out /tmp/threat-feed.sig.bin threat-feed.json
-          base64 -w0 /tmp/threat-feed.sig.bin > threat-feed.sig
-          printf '\n' >> threat-feed.sig
-          rm -f /tmp/threat-feed.sig.bin
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add threat-feed.json threat-feed.sig
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: sign threat feed"
-            git push
+          openssl x509 -in phoneguard-release-cert.pem -pubkey -noout > /tmp/feed-public.pem
+          FEED_CHANGED=false
+          if ! git diff --quiet -- threat-feed.json; then FEED_CHANGED=true; fi
+          SIGNATURE_VALID=false
+          if [ -s threat-feed.sig ]; then
+            base64 -d threat-feed.sig > /tmp/existing-feed.sig.bin || true
+            if [ -s /tmp/existing-feed.sig.bin ] && openssl dgst -sha256 -verify /tmp/feed-public.pem -signature /tmp/existing-feed.sig.bin threat-feed.json >/dev/null 2>&1; then
+              SIGNATURE_VALID=true
+            fi
           fi
+          if [ "$FEED_CHANGED" = true ] || [ "$SIGNATURE_VALID" != true ]; then
+            openssl dgst -sha256 -sign /tmp/phoneguard-feed-key.pem -out /tmp/threat-feed.sig.bin threat-feed.json
+            base64 -w0 /tmp/threat-feed.sig.bin > threat-feed.sig
+            printf '\n' >> threat-feed.sig
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add threat-feed.json threat-feed.sig
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: sign threat feed"
+              git pull --rebase origin main
+              git push
+            fi
+          else
+            echo "Existing signature already verifies unchanged feed; no signing commit needed."
+          fi
+          rm -f /tmp/threat-feed.sig.bin /tmp/existing-feed.sig.bin /tmp/feed-public.pem
 
       - name: Validate threat feed integrity
         run: |
