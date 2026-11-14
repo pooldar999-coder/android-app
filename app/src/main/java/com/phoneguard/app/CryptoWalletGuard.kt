@@ -96,7 +96,7 @@ object CryptoWalletGuard {
             Finding(
                 "برنامه‌های دارای اجازه نمایش روی برنامه‌ها",
                 overlayApps.take(25).joinToString("\n") { "${pm.getApplicationLabel(it)} (${it.packageName})" } +
-                    if (overlayApps.size > 25) "\nو ${overlayApps.size - 25} برنامه دیگر" else "" +
+                    (if (overlayApps.size > 25) "\nو ${overlayApps.size - 25} برنامه دیگر" else "") +
                     "\nاین اجازه می‌تواند برای پوشاندن صفحه یا فریب کاربر سوءاستفاده شود؛ وجود آن به‌تنهایی نشانه بدافزار نیست.",
                 1
             )
@@ -113,7 +113,7 @@ object CryptoWalletGuard {
             Finding(
                 "برنامه‌های مجاز به نصب APK",
                 installSources.take(25).joinToString("\n") { "${pm.getApplicationLabel(it)} (${it.packageName})" } +
-                    if (installSources.size > 25) "\nو ${installSources.size - 25} برنامه دیگر" else "" +
+                    (if (installSources.size > 25) "\nو ${installSources.size - 25} برنامه دیگر" else "") +
                     "\nاگر برنامه‌ای را نمی‌شناسی، اجازه نصب آن را از تنظیماتش لغو کن. داشتن این اجازه به‌تنهایی اثبات آلودگی نیست.",
                 1
             )
