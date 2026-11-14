@@ -105,7 +105,7 @@ object CryptoWalletGuard {
         val installSources = apps.filter {
             it.packageName != context.packageName &&
                 !it.flags.hasFlag(ApplicationInfo.FLAG_SYSTEM) &&
-                opAllowed(appOps, AppOpsManager.OPSTR_REQUEST_INSTALL_PACKAGES, it)
+                opAllowed(appOps, "android:request_install_packages", it)
         }
         findings += if (installSources.isEmpty()) {
             Finding("اجازه نصب برنامه از منابع دیگر", "برنامه غیرسیستمی با اجازه نصب بسته در بررسی قابل مشاهده پیدا نشد.", 0)
