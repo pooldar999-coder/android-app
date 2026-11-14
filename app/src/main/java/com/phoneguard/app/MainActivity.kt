@@ -513,14 +513,8 @@ class MainActivity : Activity() {
 
                 val flags = mutableListOf<String>()
 
-                // Hidden-app inventory: lack of a launcher entry or a custom icon is
-                // informational only. Many legitimate Android components work this way.
-                val launchIntent = safe { packageManager.getLaunchIntentForPackage(info.packageName) }
-                if (launchIntent == null) {
-                    flags.add(// No launcher activity is common for legitimate system components; do not flag it by itself.
-                )
-                }
-                // Missing icons and disabled packages are common for legitimate components.
+                // Apps without launcher icons or activities are common Android components;
+                // do not classify them as suspicious on that basis.
                 if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     flags.add("نسخه قابل اشکال‌زدایی")
                 }
