@@ -3,6 +3,7 @@
 import json
 import re
 import urllib.request
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,7 +14,11 @@ FEED = Path("threat-feed.json")
 HASH = re.compile(r"^[0-9a-fA-F]{64}$")
 
 def get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "PhoneGuard-threat-feed/1.0", "Accept": "application/vnd.github+json"})
+    headers = {"User-Agent": "PhoneGuard-threat-feed/1.0", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as response:
         return response.read()
 
