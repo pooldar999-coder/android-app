@@ -179,7 +179,7 @@ class MainActivity : Activity() {
                         .show()
                     2 -> android.app.AlertDialog.Builder(this)
                         .setTitle("درباره PhoneGuard")
-                        .setMessage("PhoneGuard\nابزار بررسی امنیت و حریم خصوصی اندروید\n\nسازنده: mehdiroomiany\nایمیل: mehdiroomiany@gmail.com\nنسخه: 1.0")
+                        .setMessage("PhoneGuard\nابزار بررسی امنیت و حریم خصوصی اندروید\n\nسازنده: mehdiroomiany\nایمیل: mehdiroomiany@gmail.com\nنسخه: " + (packageManager.getPackageInfo(packageName, 0).versionName ?: "نامشخص"))
                         .setPositiveButton("بستن", null)
                         .setNeutralButton("تماس با سازنده") { _, _ ->
                             runCatching { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:mehdiroomiany@gmail.com"))) }
