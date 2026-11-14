@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "version": 6,
-  "updated_at": 1794575760,
+  "version": 7,
+  "updated_at": 1794642720,
   "description": "Curated Android malware APK SHA-256 indicators with source provenance. Partial blocklist; absence of a match does not indicate an app is safe.",
   "entries": [
     {
@@ -8253,6 +8253,86 @@
       "confidence": "high",
       "sample_type": "APK",
       "notes": "SHA-256 copied from the campaign apks.csv sample-hash list; 64-hex APK hash."
+    },
+    {
+      "sha256": "e0714788b4e2518b0d9d4cbf18c7217bb97718e01689d77338f1cc4a230fcb6c",
+      "category": "trojan",
+      "family": "StreamRAT Android RAT",
+      "source": "ThreatFabric primary research",
+      "source_url": "https://www.threatfabric.com/blogs/from-meta-ads-to-full-device-takeover-uncovering-streamrat",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "Dropper APK SHA-256 explicitly listed in ThreatFabric IOC table; package io.base.one887."
+    },
+    {
+      "sha256": "ba83cc3c9535690191018edf73ca5c6001609df9919462796aa2e551f142e4d3",
+      "category": "trojan",
+      "family": "StreamRAT Android RAT",
+      "source": "ThreatFabric primary research",
+      "source_url": "https://www.threatfabric.com/blogs/from-meta-ads-to-full-device-takeover-uncovering-streamrat",
+      "confidence": "high",
+      "sample_type": "APK",
+      "notes": "Payload APK SHA-256 explicitly listed in ThreatFabric IOC table; package io.meat.hint."
+    },
+    {
+      "sha256": "2fb5b01ea5a483d60b659e85327a53c6661bdd630d4afd93dc5fe0941d3ccbbe",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "Android malware sample hash listed in report IOC appendix; confidence medium."
+    },
+    {
+      "sha256": "feea425cde1223fe7afdd7a1ea631678ec6282f6cc20c3d3c0fb97cdbcf65b9b",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "July dropped implant APK hash listed in report IOC appendix."
+    },
+    {
+      "sha256": "e7abc375f24d0dd2419e0bce4686c7301b3ee82ae38906c67d3481580f6c648e",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "Primary implant APK hash listed in report IOC appendix."
+    },
+    {
+      "sha256": "80be0942d0e20b5006e240434f42512c8b3cd0d54eee858a25663c1a4224a576",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "July wrapper APK hash listed in report IOC appendix."
+    },
+    {
+      "sha256": "2884108b35eba7b8099087405653c1b23c3839f0d5058c4d61341fc31cfc6040",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "May wrapper APK hash listed in report IOC appendix."
+    },
+    {
+      "sha256": "7c12f1237090e32c18583f66f1a9e44b029ad7c1e61179e1d524fb3093abd59a",
+      "category": "trojan",
+      "family": "Manic Android banking RAT",
+      "source": "CyberPress IOC appendix citing ThreatFabric research",
+      "source_url": "https://cyberpress.org/manic-android-malware-steals-banking-pins-takes-remote-control/",
+      "confidence": "medium",
+      "sample_type": "APK",
+      "notes": "Implant sibling APK hash; independently cross-referenced by SOCRadar."
     }
   ]
 }
