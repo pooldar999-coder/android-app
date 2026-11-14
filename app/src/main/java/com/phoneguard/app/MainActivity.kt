@@ -116,7 +116,7 @@ class MainActivity : Activity() {
         val lastThreatUpdate = feedPrefs.getLong("threat_updated", 0L)
         val feedCount = feedPrefs.getInt("threat_entries", 0)
         addText(if (lastThreatUpdate > 0L) "آخرین به‌روزرسانی بانک: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(lastThreatUpdate)) else "بانک تهدیدها هنوز به‌روزرسانی نشده است.", 12f, muted)
-        addText("تعداد امضاهای APK در بانک: $feedCount — پوشش محدود است و نبود تطبیق به معنی امن بودن برنامه نیست.", 12f, muted)
+        addText("تعداد شاخص‌های هش APK در بانک: $feedCount — پوشش محدود است و نبود تطبیق به معنی امن بودن برنامه نیست.", 12f, muted)
         addText("چه چیزهایی بررسی می‌شوند؟", 18f, ink, true, 18)
         addInfoCard("دسترسی‌های ویژه", "دسترس‌پذیری، خواندن اعلان‌ها و مدیر دستگاه")
         addInfoCard("اتصالات و تنظیمات", "VPN و اشکال‌زدایی USB")
@@ -145,7 +145,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         dialog.dismiss()
                         val message = result.fold(
-                            { info -> "نسخه بانک: " + info.version + "\nتعداد امضاهای تأییدشده: " + info.entries + "\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\n\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
+                            { info -> "نسخه بانک: " + info.version + "\nتعداد شاخص‌های هش تأییدشده: " + info.entries + "\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\n\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
                             { err -> "به‌روزرسانی انجام نشد: " + (err.message ?: "خطای ارتباط یا قالب نامعتبر") }
                         )
                         android.app.AlertDialog.Builder(this).setTitle("وضعیت بانک تهدیدها").setMessage(message).setPositiveButton("باشه", null).show()
@@ -381,9 +381,12 @@ class MainActivity : Activity() {
         val highRisk = (accessibility + listeners + admins).distinct().filterNot { isSystemPackage(it) }
         val privacyApps = privacyPermissionApps()
         val reviewApps = completedAppAudit ?: auditInstalledApps()
-        // Count all findings that require user review in the summary, including app-audit flags.
-        // These are review indicators, not proof that an app is malicious.
-        val warnings = highRisk.size + (if (adb) 1 else 0) + reviewApps.size
+        // Only actionable malware indicators contribute to the risk total.
+        // Enabled accessibility / notification / admin services are shown separately as review items.
+        val actionableAppFindings = reviewApps.count { app -> app.flags.any { flag ->
+            flag.startsWith("تطبیق هش APK") || flag.contains("الگوی") || flag.contains("خطر ویژه کیف پول")
+        } }
+        val warnings = (if (adb) 1 else 0) + actionableAppFindings
 
         addText("گزارش اسکن", 13f, blue, true)
         addText("نتیجه بررسی امنیتی", 26f, ink, true)
@@ -404,8 +407,11 @@ class MainActivity : Activity() {
             }
             findings.add(Finding("${appLabel(pkg)} — $kind", "این دسترسی حساس فعال است. اگر برنامه را نمی‌شناسید، بررسی‌اش کنید."))
         }
-        if (findings.isEmpty()) addResultCard("✓", "دسترسی ویژه مشکوکی پیدا نشد", "دسترس‌پذیری، اعلان‌ها و مدیر دستگاه بررسی شدند.", green)
-        else findings.forEach { addResultCard("!", it.title, it.detail, red) }
+        if (findings.isEmpty()) addResultCard("✓", "سرویس حساس فعالی پیدا نشد", "دسترس‌پذیری، اعلان‌ها و مدیر دستگاه بررسی شدند.", green)
+        else {
+            addText("سرویس‌های حساس فعال (نیازمند تأیید شما، نه اثبات آلودگی)", 14f, amber, true)
+            findings.forEach { addResultCard("i", it.title, it.detail + " اگر خودتان این سرویس را فعال کرده‌اید و به آن اعتماد دارید، این مورد به‌تنهایی خطر محسوب نمی‌شود.", amber) }
+        }
 
         addText("وضعیت اتصال", 19f, ink, true, 18)
         addResultCard(if (vpn) "i" else "✓", "VPN", if (vpn) "یک اتصال VPN فعال است. اندروید نام برنامهٔ سازندهٔ تونل را از این API در اختیار این برنامه نمی‌گذارد؛ فعال بودن VPN به‌تنهایی خطر نیست." else "اتصال VPN فعالی شناسایی نشد.", if (vpn) amber else green)
@@ -511,14 +517,10 @@ class MainActivity : Activity() {
                 // informational only. Many legitimate Android components work this way.
                 val launchIntent = safe { packageManager.getLaunchIntentForPackage(info.packageName) }
                 if (launchIntent == null) {
-                    flags.add("برنامه صفحه اجرای معمولی ندارد؛ ممکن است سرویس یا افزونه سیستمی باشد، بررسی کنید")
+                    flags.add(// No launcher activity is common for legitimate system components; do not flag it by itself.
+                )
                 }
-                if (app.icon == 0) {
-                    flags.add("برنامه آیکون اختصاصی ندارد؛ به‌تنهایی نشانه بدافزار نیست")
-                }
-                if (!app.enabled) {
-                    flags.add("برنامه در حال حاضر غیرفعال است")
-                }
+                // Missing icons and disabled packages are common for legitimate components.
                 if ((app.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     flags.add("نسخه قابل اشکال‌زدایی")
                 }
@@ -528,9 +530,7 @@ class MainActivity : Activity() {
                 } else {
                     safe { packageManager.getInstallerPackageName(info.packageName) }
                 } ?: "نامشخص"
-                if (installer == "نامشخص" && (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
-                    flags.add("منبع نصب ثبت نشده؛ به‌تنهایی نشانه بدافزار نیست")
-                }
+                // Unknown installer is used only as supporting context for combined risk heuristics.
 
                 // Count only permissions Android reports as granted; requested permissions alone
                 // are not evidence that an app can use them.
@@ -544,7 +544,8 @@ class MainActivity : Activity() {
                         "android.permission.RECORD_AUDIO",
                         "android.permission.CAMERA",
                         "android.permission.ACCESS_FINE_LOCATION",
-                        "android.permission.READ_CONTACTS"
+                        "android.permission.READ_CONTACTS",
+                        "android.permission.READ_CALL_LOG"
                     )
                     if (isSensitive && index < permissionFlags.size &&
                         (permissionFlags[index] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
@@ -604,16 +605,15 @@ class MainActivity : Activity() {
                 }
 
                 val hasBroadFileAccess =
-                    "android.permission.MANAGE_EXTERNAL_STORAGE" in requestedSet ||
-                    "android.permission.WRITE_EXTERNAL_STORAGE" in requestedSet
+                    "android.permission.MANAGE_EXTERNAL_STORAGE" in requestedSet
                 val hasBatteryExemption =
                     "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" in requestedSet
                 if (hasBroadFileAccess && hasBoot && hasBatteryExemption) {
                     flags.add("الگوی دسترسی فایل و ماندگاری؛ نیازمند بررسی از نظر باج‌افزار")
                 }
 
-                val sideloaded = installer == "نامشخص" ||
-                    (Build.VERSION.SDK_INT >= 30 && installer !in setOf("com.android.vending", "com.google.android.packageinstaller"))
+                // Installer IDs vary across OEM stores; only a genuinely unavailable installer is treated as unknown.
+                val sideloaded = installer == "نامشخص"
                 if (sideloaded && hasInternet && (spywareCount >= 1 || hasOverlay || hasAccessibilityService)) {
                     flags.add("الگوی نصب خارج از فروشگاه همراه با دسترسی پرخطر؛ احتمال تروجان نیازمند بررسی")
                 }
@@ -660,9 +660,9 @@ class MainActivity : Activity() {
         addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
         if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
         val groups = listOf(
-            "برنامه‌های بدون آیکون یا صفحه اجرای معمولی" to apps.filter { app -> app.flags.any { it.contains("آیکون اختصاصی") || it.contains("صفحه اجرای معمولی") } },
+            "برنامه‌های نیازمند بررسی فنی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") || it.contains("اجزای اعلام‌شده") } },
             "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
-            "برنامه‌های با منبع نصب نامشخص" to apps.filter { app -> app.flags.any { it.contains("منبع نصب") } },
+            
             "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق هش APK") } },
             "الگوهای جاسوس‌افزار" to apps.filter { app -> app.flags.any { it.contains("جاسوس‌افزار") } },
             "الگوهای تروجان" to apps.filter { app -> app.flags.any { it.contains("تروجان") } },
