@@ -159,7 +159,7 @@ class MainActivity : Activity() {
                             { info -> "نسخه بانک: " + info.version + "\nتعداد شاخص‌های هش تأییدشده: " + info.entries + "\nزمان دریافت: " + SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(info.updatedAt)) + "\n\nتوجه: تعداد صفر یعنی هنوز نمونه تأییدشده‌ای در فید منتشر نشده است؛ این به معنی پاک بودن گوشی نیست." },
                             { err -> "به‌روزرسانی انجام نشد: " + (err.message ?: "خطای ارتباط یا قالب نامعتبر") }
                         )
-                        android.app.AlertDialog.Builder(this).setTitle("وضعیت بانک تهدیدها").setMessage(message).setPositiveButton("باشه", null).show()
+                        android.app.AlertDialog.Builder(this).setTitle("وضعیت بانک تهدیدها").setMessage(message).setPositiveButton("باشه") { _, _ -> if (result.isSuccess) showHome() }.show()
                     }
                 }.start()
             }.show()
