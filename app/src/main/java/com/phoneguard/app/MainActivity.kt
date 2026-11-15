@@ -42,7 +42,7 @@ class MainActivity : Activity() {
     private var isHomeScreen: Boolean = true
     @Volatile private var completedAppAudit: List<AppAudit>? = null
     @Volatile private var completedPackageChanges: List<PackageChange> = emptyList()
-    private val blue = Color.rgb(35, 105, 220)
+    private val blue = Color.rgb(42, 103, 204)
     private val ink = Color.rgb(29, 39, 56)
     private val muted = Color.rgb(105, 116, 132)
     private val red = Color.rgb(194, 50, 50)
@@ -92,12 +92,12 @@ class MainActivity : Activity() {
             background = round(Color.rgb(232, 240, 253), 14)
             setOnClickListener { showAppMenu() }
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
-        addText("PHONEGUARD", 13f, blue, true)
+        addText("🛡️  PHONEGUARD", 13f, Color.rgb(17, 130, 112), true)
         addText("مرکز امنیت گوشی", 27f, ink, true)
         addText("بررسی دسترسی‌های مهم و تنظیمات امنیتی دستگاه", 14f, muted)
         addInfoCard("پروفایل دستگاه", DeviceProfile.summary(this))
         val hero = card()
-        hero.setBackground(round(Color.rgb(24, 65, 133), 22))
+        hero.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(30, 72, 150), Color.rgb(17, 137, 128))).apply { cornerRadius = dp(22).toFloat() }
         hero.addView(text("بررسی امنیتی گوشی شما", 19f, Color.WHITE, true))
         hero.addView(text("اسکن محلی انجام می‌شود؛ هیچ اطلاعاتی از گوشی ارسال نمی‌شود.", 13f, Color.rgb(225, 235, 250)))
         scanButton = Button(this).apply {
@@ -116,7 +116,7 @@ class MainActivity : Activity() {
             isAllCaps = false
             textSize = 15f
             setTextColor(Color.WHITE)
-            background = round(Color.rgb(24, 105, 82), 14)
+            background = round(Color.rgb(17, 130, 112), 14)
             setOnClickListener {
                 isHomeScreen = false
                 CryptoWalletGuard.show(this@MainActivity, root) { showHome() }
