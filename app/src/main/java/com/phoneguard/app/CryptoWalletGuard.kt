@@ -167,70 +167,124 @@ object CryptoWalletGuard {
     fun show(activity: Activity, root: LinearLayout, home: () -> Unit) {
         root.removeAllViews()
         val blue = Color.rgb(35, 105, 220)
+        val teal = Color.rgb(17, 130, 112)
         val ink = Color.rgb(29, 39, 56)
         val muted = Color.rgb(105, 116, 132)
         root.addView(Button(activity).apply {
             text = "⌂  بازگشت به صفحه اصلی"
             isAllCaps = false
             setTextColor(blue)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(232, 240, 253)); cornerRadius = dp(activity, 14).toFloat()
+            }
             setOnClickListener { home() }
         }, LinearLayout.LayoutParams(-1, dp(activity, 46)))
         root.addView(TextView(activity).apply {
             text = "محافظ کیف پول رمزارز"
             textSize = 24f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
             setTextColor(ink)
             setPadding(0, dp(activity, 18), 0, dp(activity, 8))
         })
-        root.addView(TextView(activity).apply {
-            text = "بررسی محلی دسترسی‌های حساس و تنظیمات امنیتی؛ بدون دسترسی به اطلاعات محرمانه کیف پول."
+        val intro = TextView(activity).apply {
+            text = "این بخش تنظیمات و دسترسی‌هایی را بررسی می‌کند که ممکن است برای فریب کاربر یا دسترسی به اعلان‌ها سوءاستفاده شوند؛ به اطلاعات داخل کیف پول دسترسی ندارد."
             textSize = 14f
             setTextColor(muted)
-        })
-        val findings = inspect(activity)
-        findings.forEach { finding ->
-            val color = when (finding.risk) {
-                2 -> Color.rgb(190, 45, 45)
-                1 -> Color.rgb(175, 112, 20)
-                else -> Color.rgb(30, 125, 80)
+            setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(226, 245, 241)); cornerRadius = dp(activity, 16).toFloat()
             }
-            val card = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(Color.WHITE)
-                    cornerRadius = dp(activity, 14).toFloat()
+        }
+        root.addView(intro, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(activity, 10) })
+        val progress = android.widget.ProgressBar(activity).apply { isIndeterminate = true }
+        root.addView(progress, LinearLayout.LayoutParams(-1, dp(activity, 42)))
+        root.addView(TextView(activity).apply {
+            text = "در حال بررسی دسترسی‌های امنیتی…"
+            textSize = 14f
+            setTextColor(blue)
+            gravity = android.view.Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(activity, 12) })
+
+        Thread {
+            val result = runCatching { inspect(activity) }
+            activity.runOnUiThread {
+                if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+                root.removeView(progress)
+                // Remove the temporary progress label while keeping the introduction.
+                if (root.childCount > 2) root.removeViewAt(2)
+                val findings = result.getOrElse {
+                    root.addView(TextView(activity).apply {
+                        text = "بررسی کامل نشد: ${it.message ?: "خطای نامشخص"}"
+                        textSize = 14f
+                        setTextColor(Color.rgb(170, 45, 45))
+                    })
+                    emptyList()
                 }
+                findings.forEach { finding ->
+                    val color = when (finding.risk) {
+                        2 -> Color.rgb(190, 45, 45)
+                        1 -> Color.rgb(175, 112, 20)
+                        else -> teal
+                    }
+                    val tint = when (finding.risk) {
+                        2 -> Color.rgb(255, 238, 236)
+                        1 -> Color.rgb(255, 247, 229)
+                        else -> Color.rgb(235, 247, 243)
+                    }
+                    val card = LinearLayout(activity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(tint)
+                            cornerRadius = dp(activity, 14).toFloat()
+                        }
+                    }
+                    card.addView(TextView(activity).apply {
+                        text = finding.title
+                        textSize = 16f
+                        setTypeface(typeface, android.graphics.Typeface.BOLD)
+                        setTextColor(color)
+                    })
+                    card.addView(TextView(activity).apply {
+                        text = finding.detail
+                        textSize = 13f
+                        setTextColor(ink)
+                        setPadding(0, dp(activity, 6), 0, 0)
+                    })
+                    root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 9) })
+                }
+                root.addView(TextView(activity).apply {
+                    text = "دسترسی‌های مهم را از تنظیمات اندروید بررسی کن:"
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(ink)
+                    setPadding(0, dp(activity, 16), 0, dp(activity, 4))
+                })
+                val actions = listOf(
+                    "بررسی دسترس‌پذیری" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
+                    "بررسی دسترسی نمایش روی برنامه‌ها" to Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    "بررسی برنامه‌های مدیر دستگاه" to Settings.ACTION_SECURITY_SETTINGS
+                )
+                actions.forEachIndexed { index, (title, action) ->
+                    root.addView(Button(activity).apply {
+                        text = title
+                        isAllCaps = false
+                        setTextColor(if (index == 0) Color.WHITE else blue)
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(if (index == 0) blue else Color.rgb(232, 240, 253))
+                            cornerRadius = dp(activity, 13).toFloat()
+                        }
+                        setOnClickListener { runCatching { activity.startActivity(Intent(action)) } }
+                    }, LinearLayout.LayoutParams(-1, dp(activity, 46)).apply { topMargin = dp(activity, 6) })
+                }
+                root.addView(TextView(activity).apply {
+                    text = "مهم: عبارت بازیابی یا کلید خصوصی را هرگز در PhoneGuard، سایت یا پیام‌رسان وارد نکن. اگر احتمال افشای آن وجود دارد، از یک دستگاه سالم کیف پول تازه‌ای بساز و دارایی را منتقل کن."
+                    textSize = 14f
+                    setTextColor(Color.rgb(150, 45, 35))
+                    setPadding(0, dp(activity, 16), 0, dp(activity, 18))
+                })
             }
-            card.addView(TextView(activity).apply { text = finding.title; textSize = 16f; setTextColor(color) })
-            card.addView(TextView(activity).apply { text = finding.detail; textSize = 13f; setTextColor(ink); setPadding(0, dp(activity, 6), 0, 0) })
-            root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 10) })
-        }
-        root.addView(TextView(activity).apply {
-            text = "دسترسی‌های مهم را از تنظیمات اندروید بررسی کن:"
-            textSize = 14f
-            setTextColor(ink)
-            setPadding(0, dp(activity, 16), 0, dp(activity, 4))
-        })
-        val actions = listOf(
-            "بررسی دسترس‌پذیری" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
-            "بررسی دسترسی نمایش روی برنامه‌ها" to Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            "بررسی برنامه‌های مدیر دستگاه" to Settings.ACTION_SECURITY_SETTINGS
-        )
-        actions.forEach { (title, action) ->
-            root.addView(Button(activity).apply {
-                text = title
-                isAllCaps = false
-                setOnClickListener {
-                    runCatching { activity.startActivity(Intent(action)) }
-                }
-            }, LinearLayout.LayoutParams(-1, dp(activity, 46)).apply { topMargin = dp(activity, 6) })
-        }
-        root.addView(TextView(activity).apply {
-            text = "اقدام ضروری: عبارت بازیابی را آفلاین و روی کاغذ نگه‌دار. اگر احتمال افشای آن وجود دارد، از یک دستگاه پاک کیف پول تازه‌ای با عبارت جدید بساز و دارایی را منتقل کن."
-            textSize = 14f
-            setTextColor(Color.rgb(150, 45, 35))
-            setPadding(0, dp(activity, 16), 0, dp(activity, 18))
-        })
+        }.start()
     }
 
     private fun dp(context: Context, value: Int): Int =
