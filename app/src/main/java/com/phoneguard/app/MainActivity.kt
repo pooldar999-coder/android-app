@@ -634,16 +634,28 @@ class MainActivity : Activity() {
 
                 // Match SHA-256 of installed APK file, not its signing certificate.
                 val apkHash = runCatching {
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    FileInputStream(app.sourceDir).use { input ->
-                        val buffer = ByteArray(65536)
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            digest.update(buffer, 0, count)
+                    val apkFile = java.io.File(app.sourceDir)
+                    val hashPrefs = getSharedPreferences("phoneguard_apk_hash_cache", MODE_PRIVATE)
+                    val cacheKey = info.packageName
+                    val cached = hashPrefs.getString(cacheKey, null)
+                    val cachedStamp = hashPrefs.getLong(cacheKey + "_stamp", -1L)
+                    val stamp = info.lastUpdateTime xor apkFile.length()
+                    if (cached != null && cachedStamp == stamp && cached.matches(Regex("^[a-f0-9]{64}$"))) {
+                        cached
+                    } else {
+                        val digest = MessageDigest.getInstance("SHA-256")
+                        FileInputStream(apkFile).use { input ->
+                            val buffer = ByteArray(65536)
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                digest.update(buffer, 0, count)
+                            }
+                        }
+                        digest.digest().joinToString("") { b -> "%02x".format(b) }.also { hash ->
+                            hashPrefs.edit().putString(cacheKey, hash).putLong(cacheKey + "_stamp", stamp).apply()
                         }
                     }
-                    digest.digest().joinToString("") { b -> "%02x".format(b) }
                 }.getOrDefault("در دسترس نیست")
                 val matched = knownIndicators[apkHash.lowercase()]
                 if (matched != null) {
