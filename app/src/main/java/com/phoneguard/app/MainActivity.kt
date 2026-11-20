@@ -754,10 +754,6 @@ class MainActivity : Activity() {
             text = "باز کردن مدیریت مصرف داده و اینترنت"
             isAllCaps = false
             setOnClickListener {
-                val candidates = listOf(
-                    "com.miui.securitycenter",
-                    "com.android.settings"
-                )
                 val opened = runCatching {
                     startActivity(Intent(Settings.ACTION_DATA_USAGE_SETTINGS))
                 }.isSuccess
