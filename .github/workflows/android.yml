@@ -4,6 +4,9 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore: [ "threat-feed.sig" ]
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore: [ "threat-feed.sig" ]
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * *"
