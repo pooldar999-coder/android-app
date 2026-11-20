@@ -452,8 +452,16 @@ class MainActivity : Activity() {
         }
 
         addText("بررسی برنامه‌های نصب‌شده", 19f, ink, true, 18)
-        addResultCard(if (reviewApps.isEmpty()) "✓" else "!", "برنامه‌های نیازمند بازبینی", "${reviewApps.size} برنامه نشانه‌هایی مانند منبع نصب نامشخص یا نسخه قابل اشکال‌زدایی دارند. این موارد به‌تنهایی اثبات بدافزار نیستند.", if (reviewApps.isEmpty()) green else amber)
+        addResultCard(if (reviewApps.isEmpty()) "✓" else "!" , "برنامه‌های نیازمند بازبینی", "${reviewApps.size} برنامه نشانه‌هایی مانند منبع نصب نامشخص یا نسخه قابل اشکال‌زدایی دارند. این موارد به‌تنهایی اثبات بدافزار نیستند.", if (reviewApps.isEmpty()) green else amber)
         root.addView(Button(this).apply { text = "بررسی و مدیریت برنامه‌ها"; isAllCaps = false; setTextColor(blue); background = round(Color.rgb(232, 240, 253), 13); setOnClickListener { showAppAudits(reviewApps) } }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        val verifiedIndicators = runCatching { ThreatFeedManager(this).loadIndicators().size }.getOrDefault(0)
+        val feedPrefs = getSharedPreferences("phoneguard", MODE_PRIVATE)
+        val feedUpdated = feedPrefs.getLong("threat_updated", 0L)
+        addText("وضعیت بانک تهدیدها", 19f, ink, true, 18)
+        addResultCard(if (verifiedIndicators > 0) "✓" else "!", "شاخص‌های دارای امضای معتبر: $verifiedIndicators",
+            if (verifiedIndicators > 0) "بانک محلی با امضای دیجیتال معتبر بارگذاری شد. آخرین دریافت: " + (if (feedUpdated > 0L) SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(feedUpdated)) else "نامشخص") + "."
+            else "هیچ شاخص امضاشده‌ای در گوشی بارگذاری نشده است؛ تطبیق هش در این اسکن پوشش مؤثری ندارد. بانک را از صفحه اصلی به‌روزرسانی کن. صفر بودن شاخص‌ها به معنی پاک بودن گوشی نیست.",
+            if (verifiedIndicators > 0) green else amber)
         addText("فعالیت قابل مشاهده برنامه‌ها در ۲۴ ساعت اخیر", 18f, ink, true, 18)
         if (usageAccessGranted()) {
             val usageText = recentForegroundUsage()
@@ -677,10 +685,11 @@ class MainActivity : Activity() {
         addText("این فهرست نشانه‌های قابل بررسی را نشان می‌دهد؛ هیچ برنامه‌ای صرفاً بر اساس این نشانه‌ها ویروس اعلام نمی‌شود.", 13f, muted)
         if (apps.isEmpty()) addResultCard("✓", "موردی برای بازبینی پیدا نشد", "برنامه‌ای با شاخص‌های این بررسی شناسایی نشد.", green)
         val groups = listOf(
+            "تطبیق قطعی هش APK با بانک تهدیدها" to apps.filter { app -> app.flags.any { it.startsWith("تطبیق هش APK") } },
+            "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") } },
+            "برنامه‌های نصب‌شده خارج از فروشگاه یا با منبع نامشخص" to apps.filter { app -> app.flags.any { it.contains("نصب خارج از فروشگاه") } },
             "برنامه‌های نیازمند بررسی فنی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") || it.contains("اجزای اعلام‌شده") } },
             "نسخه‌های قابل اشکال‌زدایی" to apps.filter { app -> app.flags.any { it.contains("اشکال‌زدایی") } },
-            
-            "هشدارهای ویژه سرقت رمزارز و کیف پول" to apps.filter { app -> app.flags.any { it.contains("خطر ویژه کیف پول") || it.contains("تطبیق هش APK") } },
             "الگوهای جاسوس‌افزار" to apps.filter { app -> app.flags.any { it.contains("جاسوس‌افزار") } },
             "الگوهای تروجان" to apps.filter { app -> app.flags.any { it.contains("تروجان") } },
             "الگوهای باج‌افزار" to apps.filter { app -> app.flags.any { it.contains("باج‌افزار") } },
@@ -693,7 +702,9 @@ class MainActivity : Activity() {
                     val c = card()
                     c.addView(text(app.name, 16f, ink, true))
                     c.addView(text(app.pkg, 11f, muted))
-                    c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, amber))
+                    val exactThreatMatch = app.flags.any { it.startsWith("تطبیق هش APK") }
+                    c.addView(text("نشانه‌ها: ${app.flags.joinToString("، ")}", 13f, if (exactThreatMatch) red else amber))
+                    if (exactThreatMatch) c.addView(text("هشدار جدی: هش فایل APK با یک شاخص ثبت‌شده در بانک تهدیدها تطبیق دارد. تا بررسی بیشتر برنامه را باز نکن و از اطلاعات حساس استفاده نکن.", 12f, red, true))
                     c.addView(text("منبع نصب: ${app.installer}\nهش فایل APK با SHA-256:\n${app.hash}", 11f, muted))
                     c.addView(Button(this).apply {
                         text = "مشاهده اطلاعات برنامه / حذف"
