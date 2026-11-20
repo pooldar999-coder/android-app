@@ -740,51 +740,55 @@ class MainActivity : Activity() {
         root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
     }
 
-    @Suppress("DEPRECATION")
     private fun showNetworkControls() {
         isHomeScreen = false
         root.removeAllViews()
         addHomeButton()
-        addText("کنترل اینترنت برنامه‌ها", 23f, ink, true)
-        addText("این بخش از تنظیمات خود اندروید/شیائومی استفاده می‌کند و VPN فعلی شما را جایگزین نمی‌کند.", 13f, muted)
-        addInfoCard("محدودیت واقعی این روش", "اندروید به برنامه‌های معمولی اجازه نمی‌دهد اینترنتِ پیش‌زمینه و پس‌زمینه هر برنامه را به‌طور کامل و مستقل قطع کنند. گزینه زیر تنظیمات محدودیت داده پس‌زمینه همان برنامه را باز می‌کند؛ ممکن است MIUI گزینه‌های بیشتری مثل Wi‑Fi و داده سیم‌کارت نشان دهد. بعد از تغییر، وضعیت را در همان تنظیمات گوشی بررسی کنید.")
+        addText("مدیریت اینترنت برنامه‌ها", 23f, ink, true)
+        addInfoCard(
+            "محدودیت مهم گوشی بدون روت",
+            "PhoneGuard نمی‌تواند بدون روت یا دسترسی سیستمی، اینترنت همه برنامه‌ها را با تیک‌های داخل خودش قطع و وصل کند. فایروال VPNمحور هم عمداً استفاده نشده تا VPNهای شخصی شما دست‌نخورده بمانند. برای جلوگیری از نمایش کنترل غیرواقعی، این صفحه فقط تنظیمات واقعی خود گوشی را باز می‌کند."
+        )
+        addText("تنظیمات بومی شیائومی", 17f, ink, true, 8)
         root.addView(Button(this).apply {
-            text = "باز کردن صفحه کلی تنظیمات مصرف اینترنت"
+            text = "باز کردن مدیریت مصرف داده و اینترنت"
             isAllCaps = false
             setOnClickListener {
-                val intent = Intent(Settings.ACTION_DATA_USAGE_SETTINGS)
-                runCatching { startActivity(intent) }.onFailure {
-                    startActivity(Intent(Settings.ACTION_SETTINGS))
-                }
+                val candidates = listOf(
+                    "com.miui.securitycenter",
+                    "com.android.settings"
+                )
+                val opened = runCatching {
+                    startActivity(Intent(Settings.ACTION_DATA_USAGE_SETTINGS))
+                }.isSuccess
+                if (!opened) runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
             }
-        }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
-        addText("انتخاب برنامه", 17f, ink, true, 8)
-        val apps = safe {
-            packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { it.packageName != packageName && packageManager.getLaunchIntentForPackage(it.packageName) != null }
-                .sortedBy { appLabel(it.packageName).lowercase(Locale.getDefault()) }
-        } ?: emptyList()
-        if (apps.isEmpty()) addInfoCard("فهرست برنامه‌ها در دسترس نیست", "مجوز نمایش برنامه‌ها یا دسترسی سیستم محدود شده است.")
-        apps.forEach { app ->
-            val pkg = app.packageName
-            val item = card()
-            item.addView(text(appLabel(pkg), 15f, ink, true))
-            item.addView(text(pkg, 10f, muted))
-            item.addView(Button(this).apply {
-                text = "باز کردن تنظیمات محدودیت داده این برنامه"
-                isAllCaps = false
-                textSize = 12f
-                setOnClickListener {
-                    val uri = Uri.parse("package:$pkg")
-                    val dataIntent = Intent(Settings.ACTION_IGNORE_BACKGROUND_DATA_RESTRICTIONS_SETTINGS, uri)
-                    val detailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri)
-                    val launched = runCatching { startActivity(dataIntent) }.isSuccess
-                    if (!launched) runCatching { startActivity(detailsIntent) }
-                }
-            }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
-            root.addView(item)
-        }
-        addText("نکته: اگر در صفحه بازشده فقط گزینه «داده پس‌زمینه» دیدی، خاموش‌کردنش اینترنت برنامه را هنگام باز بودن برنامه قطع نمی‌کند. برای قطع کامل Wi‑Fi و دیتای سیم‌کارت، از کنترل بومی MIUI در Security / مصرف داده استفاده کن، اگر در نسخه سیستم‌عاملت موجود باشد.", 12f, amber, false, 12)
+        }, LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(10) })
+        addText("وضعیت اتصال VPN", 17f, ink, true, 8)
+        val vpnActive = runCatching {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork
+            network != null && cm.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+        }.getOrDefault(false)
+        addResultCard(
+            if (vpnActive) "✓" else "—",
+            if (vpnActive) "اتصال VPN فعال شناسایی شد" else "اتصال VPN فعال شناسایی نشد",
+            "این فقط وضعیت اتصال فعال را گزارش می‌کند؛ PhoneGuard نام یا امنیت سرویس‌دهنده VPN را تأیید نمی‌کند و در اتصال آن دخالت ندارد.",
+            if (vpnActive) green else muted
+        )
+        root.addView(Button(this).apply {
+            text = "باز کردن تنظیمات VPN اندروید"
+            isAllCaps = false
+            setOnClickListener {
+                runCatching { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
+                    .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) } }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(10) })
+        addInfoCard(
+            "درباره فهرست سفید با تیک انتخابی",
+            "در این گوشیِ بدون روت، برنامه عادی نمی‌تواند با یک فهرست داخلی و بدون VPN محلی، دسترسی شبکه سایر برنامه‌ها را به‌طور کامل کنترل کند. کنترل‌های مصرف داده در MIUI ممکن است بسته به نسخه سیستم‌عامل برای Wi‑Fi و اینترنت سیم‌کارت جداگانه در دسترس باشند؛ تغییرات را فقط در تنظیمات خود گوشی اعمال کنید."
+        )
     }
 
     private fun addInfoCard(title: String, detail: String) {
