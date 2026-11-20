@@ -112,6 +112,14 @@ class MainActivity : Activity() {
         hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
         root.addView(hero)
         root.addView(Button(this).apply {
+            text = "کنترل اینترنت برنامه‌ها"
+            isAllCaps = false
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            background = round(Color.rgb(42, 103, 204), 14)
+            setOnClickListener { showNetworkControls() }
+        }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12); bottomMargin = dp(8) })
+        root.addView(Button(this).apply {
             text = "محافظ کیف پول رمزارز"
             isAllCaps = false
             textSize = 15f
@@ -730,6 +738,53 @@ class MainActivity : Activity() {
             root.addView(c)
         }
         root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showNetworkControls() {
+        isHomeScreen = false
+        root.removeAllViews()
+        addHomeButton()
+        addText("کنترل اینترنت برنامه‌ها", 23f, ink, true)
+        addText("این بخش از تنظیمات خود اندروید/شیائومی استفاده می‌کند و VPN فعلی شما را جایگزین نمی‌کند.", 13f, muted)
+        addInfoCard("محدودیت واقعی این روش", "اندروید به برنامه‌های معمولی اجازه نمی‌دهد اینترنتِ پیش‌زمینه و پس‌زمینه هر برنامه را به‌طور کامل و مستقل قطع کنند. گزینه زیر تنظیمات محدودیت داده پس‌زمینه همان برنامه را باز می‌کند؛ ممکن است MIUI گزینه‌های بیشتری مثل Wi‑Fi و داده سیم‌کارت نشان دهد. بعد از تغییر، وضعیت را در همان تنظیمات گوشی بررسی کنید.")
+        root.addView(Button(this).apply {
+            text = "باز کردن صفحه کلی تنظیمات مصرف اینترنت"
+            isAllCaps = false
+            setOnClickListener {
+                val intent = Intent(Settings.ACTION_DATA_USAGE_SETTINGS)
+                runCatching { startActivity(intent) }.onFailure {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
+        addText("انتخاب برنامه", 17f, ink, true, 8)
+        val apps = safe {
+            packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { it.packageName != packageName && packageManager.getLaunchIntentForPackage(it.packageName) != null }
+                .sortedBy { appLabel(it.packageName).lowercase(Locale.getDefault()) }
+        } ?: emptyList()
+        if (apps.isEmpty()) addInfoCard("فهرست برنامه‌ها در دسترس نیست", "مجوز نمایش برنامه‌ها یا دسترسی سیستم محدود شده است.")
+        apps.forEach { app ->
+            val pkg = app.packageName
+            val item = card()
+            item.addView(text(appLabel(pkg), 15f, ink, true))
+            item.addView(text(pkg, 10f, muted))
+            item.addView(Button(this).apply {
+                text = "باز کردن تنظیمات محدودیت داده این برنامه"
+                isAllCaps = false
+                textSize = 12f
+                setOnClickListener {
+                    val uri = Uri.parse("package:$pkg")
+                    val dataIntent = Intent(Settings.ACTION_IGNORE_BACKGROUND_DATA_RESTRICTIONS_SETTINGS, uri)
+                    val detailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri)
+                    val launched = runCatching { startActivity(dataIntent) }.isSuccess
+                    if (!launched) runCatching { startActivity(detailsIntent) }
+                }
+            }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+            root.addView(item)
+        }
+        addText("نکته: اگر در صفحه بازشده فقط گزینه «داده پس‌زمینه» دیدی، خاموش‌کردنش اینترنت برنامه را هنگام باز بودن برنامه قطع نمی‌کند. برای قطع کامل Wi‑Fi و دیتای سیم‌کارت، از کنترل بومی MIUI در Security / مصرف داده استفاده کن، اگر در نسخه سیستم‌عاملت موجود باشد.", 12f, amber, false, 12)
     }
 
     private fun addInfoCard(title: String, detail: String) {
