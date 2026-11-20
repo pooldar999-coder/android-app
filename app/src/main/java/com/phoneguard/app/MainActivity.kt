@@ -112,7 +112,7 @@ class MainActivity : Activity() {
         hero.addView(scanButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(18) })
         root.addView(hero)
         root.addView(Button(this).apply {
-            text = "کنترل اینترنت برنامه‌ها"
+            text = "مدیریت محدودیت اینترنت برنامه‌ها"
             isAllCaps = false
             textSize = 15f
             setTextColor(Color.WHITE)
