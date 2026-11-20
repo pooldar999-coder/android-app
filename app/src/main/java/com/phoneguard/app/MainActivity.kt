@@ -308,7 +308,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private data class Finding(val title: String, val detail: String)
+    private data class Finding(val title: String, val detail: String, val settingsIntent: Intent? = null)
     private data class PackageSnapshot(val version: String, val firstInstall: Long, val lastUpdate: Long, val installer: String)
     private data class PackageChange(val label: String, val packageName: String, val kind: String, val detail: String)
 
@@ -417,19 +417,36 @@ class MainActivity : Activity() {
 
         addText("موارد مهم", 19f, ink, true, 18)
         val findings = mutableListOf<Finding>()
-        if (adb) findings.add(Finding("اشکال‌زدایی USB روشن است", "اگر خودتان فعالش نکرده‌اید، از تنظیمات توسعه‌دهنده خاموش کنید."))
+        if (adb) findings.add(Finding("اشکال‌زدایی USB روشن است", "اگر خودتان فعالش نکرده‌اید، از تنظیمات توسعه‌دهنده خاموش کنید.", Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)))
         highRisk.forEach { pkg ->
             val kind = when {
                 pkg in accessibility -> "دسترسی دسترس‌پذیری"
                 pkg in listeners -> "دسترسی خواندن اعلان‌ها"
                 else -> "مدیر دستگاه"
             }
-            findings.add(Finding("${appLabel(pkg)} — $kind", "این دسترسی حساس فعال است. اگر برنامه را نمی‌شناسید، بررسی‌اش کنید."))
+            val targetSettings = when {
+                pkg in accessibility -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                pkg in listeners -> Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                else -> Intent(Settings.ACTION_SECURITY_SETTINGS)
+            }
+            findings.add(Finding("${appLabel(pkg)} — $kind", "این دسترسی حساس فعال است. اگر برنامه را نمی‌شناسید، بررسی‌اش کنید.", targetSettings))
         }
         if (findings.isEmpty()) addResultCard("✓", "سرویس حساس فعالی پیدا نشد", "دسترس‌پذیری، اعلان‌ها و مدیر دستگاه بررسی شدند.", green)
         else {
             addText("سرویس‌های حساس فعال (نیازمند تأیید شما، نه اثبات آلودگی)", 14f, amber, true)
-            findings.forEach { addResultCard("i", it.title, it.detail + " اگر خودتان این سرویس را فعال کرده‌اید و به آن اعتماد دارید، این مورد به‌تنهایی خطر محسوب نمی‌شود.", amber) }
+            findings.forEach { finding ->
+                val c = card()
+                c.addView(text(finding.title, 16f, ink, true))
+                c.addView(text(finding.detail + " اگر خودتان این سرویس را فعال کرده‌اید و به آن اعتماد دارید، این مورد به‌تنهایی خطر محسوب نمی‌شود.", 13f, muted))
+                finding.settingsIntent?.let { target ->
+                    c.addView(Button(this).apply {
+                        text = "رفتن به تنظیمات و اصلاح"
+                        isAllCaps = false
+                        setOnClickListener { openSettings(target) }
+                    })
+                }
+                root.addView(c)
+            }
         }
 
         addText("وضعیت اتصال", 19f, ink, true, 18)
@@ -440,7 +457,7 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 setTextColor(blue)
                 background = round(Color.rgb(232, 240, 253), 13)
-                setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) } }
+                setOnClickListener { openSettings(Intent(Settings.ACTION_VPN_SETTINGS)) }
             }, LinearLayout.LayoutParams(-1, dp(46)).apply { bottomMargin = dp(8) })
         }
         addResultCard(if (adb) "!" else "✓", "اشکال‌زدایی USB", if (adb) "روشن است؛ در صورت عدم نیاز خاموشش کنید." else "خاموش است.", if (adb) red else green)
@@ -717,7 +734,7 @@ class MainActivity : Activity() {
                     c.addView(Button(this).apply {
                         text = "مشاهده اطلاعات برنامه / حذف"
                         isAllCaps = false
-                        setOnClickListener { runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) } }
+                        setOnClickListener { openSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) }
                     })
                     root.addView(c)
                 }
@@ -735,6 +752,11 @@ class MainActivity : Activity() {
             val c = card()
             c.addView(text(name, 16f, ink, true))
             c.addView(text(permissions.joinToString("، "), 13f, muted))
+            c.addView(Button(this).apply {
+                text = "مدیریت مجوزهای این برنامه"
+                isAllCaps = false
+                setOnClickListener { openSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))) }
+            })
             root.addView(c)
         }
         root.addView(Button(this).apply { text = "بازگشت به گزارش"; isAllCaps = false; setOnClickListener { showResults() } })
@@ -785,6 +807,11 @@ class MainActivity : Activity() {
             "درباره فهرست سفید با تیک انتخابی",
             "در این گوشیِ بدون روت، برنامه عادی نمی‌تواند با یک فهرست داخلی و بدون VPN محلی، دسترسی شبکه سایر برنامه‌ها را به‌طور کامل کنترل کند. کنترل‌های مصرف داده در MIUI ممکن است بسته به نسخه سیستم‌عامل برای Wi‑Fi و اینترنت سیم‌کارت جداگانه در دسترس باشند؛ تغییرات را فقط در تنظیمات خود گوشی اعمال کنید."
         )
+    }
+
+    private fun openSettings(intent: Intent) {
+        runCatching { startActivity(intent) }
+            .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) } }
     }
 
     private fun addInfoCard(title: String, detail: String) {
